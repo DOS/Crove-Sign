@@ -11,9 +11,18 @@ services:
       - ./migrations:/app/packages/prisma/migrations:ro
     ports:
       - "127.0.0.1:4008:3000"
+    networks:
+      - default
+      - postiz-network
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))\""]
       interval: 15s
       timeout: 10s
       retries: 5
       start_period: 30s
+
+networks:
+  default:
+  postiz-network:
+    name: postiz-docker-compose_postiz-network
+    external: true
