@@ -7,6 +7,8 @@ services:
     restart: always
     env_file:
       - .env
+    volumes:
+      - ./migrations:/app/packages/prisma/migrations:ro
     ports:
       - "127.0.0.1:4008:3000"
     healthcheck:
