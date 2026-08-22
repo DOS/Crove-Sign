@@ -5,6 +5,7 @@ import {
   isSignupEnabledForProvider,
 } from '@documenso/lib/constants/auth';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import { syncDosProfileAndOrgs, type DosOrgClaim } from '@documenso/lib/server-only/dos-id/sync-dos-profile';
 import { getEmailBlocklistDomains } from '@documenso/lib/server-only/site-settings/get-email-blocklist-domains';
 import { onCreateUserHook } from '@documenso/lib/server-only/user/create-user';
 import { deletedServiceAccountEmail } from '@documenso/lib/server-only/user/service-accounts/deleted-account';
@@ -31,7 +32,7 @@ export const handleOAuthCallbackUrl = async (options: HandleOAuthCallbackUrlOpti
 
   const requestMeta = c.get('requestMetadata');
 
-  const { email, name, sub, accessToken, accessTokenExpiresAt, idToken, redirectPath } = await validateOauth({
+  const { email, name, sub, accessToken, accessTokenExpiresAt, idToken, redirectPath, avatarUrl, organizations } = await validateOauth({
     c,
     clientOptions,
   });
@@ -57,6 +58,17 @@ export const handleOAuthCallbackUrl = async (options: HandleOAuthCallbackUrlOpti
 
   // Directly log in user if account already exists.
   if (existingAccount) {
+    // Sync profile and organizations on each login
+    await syncDosProfileAndOrgs({
+      userId: existingAccount.user.id,
+      email,
+      name,
+      avatarUrl,
+      organizations,
+    }).catch((err) => {
+      console.error('[DOS ID] Error syncing profile on login:', err);
+    });
+
     await onAuthorize({ userId: existingAccount.user.id }, c);
 
     return c.redirect(redirectPath, 302);
@@ -112,6 +124,17 @@ export const handleOAuthCallbackUrl = async (options: HandleOAuthCallbackUrlOpti
           },
         });
       }
+    });
+
+    // Sync profile and organizations on account link
+    await syncDosProfileAndOrgs({
+      userId: userWithSameEmail.id,
+      email,
+      name,
+      avatarUrl,
+      organizations,
+    }).catch((err) => {
+      console.error('[DOS ID] Error syncing profile on link:', err);
     });
 
     await onAuthorize({ userId: userWithSameEmail.id }, c);
@@ -179,6 +202,17 @@ export const handleOAuthCallbackUrl = async (options: HandleOAuthCallbackUrlOpti
     console.error(err);
   });
 
+  // Sync profile and organizations for new user
+  await syncDosProfileAndOrgs({
+    userId: createdUser.id,
+    email,
+    name,
+    avatarUrl,
+    organizations,
+  }).catch((err) => {
+    console.error('[DOS ID] Error syncing profile on signup:', err);
+  });
+
   await onAuthorize({ userId: createdUser.id }, c);
 
   return c.redirect(redirectPath, 302);
@@ -238,6 +272,9 @@ export const validateOauth = async (options: HandleOAuthCallbackUrlOptions) => {
   const email = claims.email;
   const name = claims.name;
   const sub = claims.sub;
+  const avatarUrl = (typeof claims.picture === 'string' ? claims.picture : typeof claims.avatar_url === 'string' ? claims.avatar_url : null) as string | null;
+  const rawOrgs = (claims.organizations || claims.orgs || (claims.user_metadata as Record<string, unknown> | undefined)?.organizations || (claims.app_metadata as Record<string, unknown> | undefined)?.organizations) as DosOrgClaim[] | undefined;
+  const organizations = Array.isArray(rawOrgs) ? rawOrgs : undefined;
 
   if (typeof email !== 'string') {
     throw new AppError(AuthenticationErrorCode.InvalidRequest, {
@@ -271,5 +308,7 @@ export const validateOauth = async (options: HandleOAuthCallbackUrlOptions) => {
     accessTokenExpiresAt,
     idToken,
     redirectPath,
+    avatarUrl,
+    organizations,
   };
 };
