@@ -36,6 +36,7 @@ CREATE OR REPLACE FUNCTION nanoid(
     LANGUAGE plpgsql
     VOLATILE
     PARALLEL SAFE
+    SET search_path = sign, extensions, public
     -- Uncomment the following line if you have superuser privileges
     -- LEAKPROOF
 AS
@@ -85,6 +86,7 @@ CREATE OR REPLACE FUNCTION nanoid_optimized(
     LANGUAGE plpgsql
     VOLATILE
     PARALLEL SAFE
+    SET search_path = sign, extensions, public
     -- Uncomment the following line if you have superuser privileges
     -- LEAKPROOF
 AS
@@ -101,7 +103,7 @@ BEGIN
     alphabetLength := array_length(alphabetArray, 1);
 
     LOOP
-        bytes := gen_random_bytes(step);
+        bytes := extensions.gen_random_bytes(step);
         FOR counter IN 0..step - 1
             LOOP
                 alphabetIndex := (get_byte(bytes, counter) & mask) + 1;
@@ -122,7 +124,7 @@ RETURNS TEXT AS $$
 BEGIN
   RETURN prefix || '_' || nanoid(16, 'abcdefhiklmnorstuvwxyz');
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql VOLATILE SET search_path = sign, extensions, public;
 
 -- CUSTOM FUNCTION FOR GENERIC IDS
 CREATE OR REPLACE FUNCTION generate_id()
@@ -130,4 +132,4 @@ RETURNS TEXT AS $$
 BEGIN
   RETURN nanoid(16, 'abcdefhiklmnorstuvwxyz');
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql VOLATILE SET search_path = sign, extensions, public;

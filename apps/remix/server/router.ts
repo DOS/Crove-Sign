@@ -27,6 +27,7 @@ import type { Logger } from 'pino';
 import { aiRoute } from './api/ai/route';
 import { downloadRoute } from './api/download/download';
 import { filesRoute } from './api/files/files';
+import { dosWebhookRoute } from './api/webhooks/dos-webhook';
 import { type AppContext, appContext } from './context';
 import { appMiddleware } from './middleware';
 import { securityHeadersMiddleware } from './security-headers';
@@ -115,6 +116,9 @@ app.route('/api/ai', aiRoute);
 
 // CSC OAuth routes (mounted from @documenso/ee).
 app.route('/api/csc', csc);
+
+// DOS.Me Webhook endpoints.
+app.route('/api/webhooks', dosWebhookRoute);
 
 // API servers.
 app.route('/api/v1', tsRestHonoApp);
