@@ -1,12 +1,12 @@
-# Kiến Trúc Hệ Thống Crove Sign (Crove OS)
+# System Architecture - Crove Sign (Crove OS)
 
-Tài liệu mô tả kiến trúc kỹ thuật, luồng dữ liệu, hạ tầng mạng, cơ sở dữ liệu và cơ chế tích hợp định danh (Identity & SSO) của **Crove Sign** trong hệ sinh thái **Crove OS / DOS.Me**.
+This document describes the technical architecture, data flows, network infrastructure, database schema isolation, and Identity & Organization Synchronization mechanisms of **Crove Sign** within the **Crove OS / DOS.Me** ecosystem.
 
 ---
 
-## 1. Tổng Quan Hệ Thống
+## 1. System Overview
 
-**Crove Sign** là dịch vụ ký tài liệu số điện tử (e-Signature Engine) của hệ sinh thái Crove, được xây dựng dựa trên core Documenso v2.17.0 (React Router v7 / Remix + Hono + Prisma + PDF Signing Engine).
+**Crove Sign** is the electronic signature service (e-Signature Engine) of the Crove ecosystem, built on top of the Documenso v2.17.0 core (React Router v7 / Remix + Hono + Prisma + PDF Signing Engine).
 
 ```
                         ┌────────────────────────────────────────┐
@@ -46,55 +46,55 @@ Tài liệu mô tả kiến trúc kỹ thuật, luồng dữ liệu, hạ tầng
 
 ---
 
-## 2. Hạ Tầng & Mạng (Infrastructure & Network)
+## 2. Infrastructure & Network
 
-### 2.1. Máy Chủ Ứng Dụng (Cloud VM)
+### 2.1. Cloud Compute Instance (VM)
 - **GCP Project**: `crove-os` (Project Number: `352034351652`, Organization: Tingee).
 - **Instance**: `crove-server` (`asia-southeast1-b`).
-- **Cấu hình**: `e2-standard-2` (2 vCPU, 8GB RAM), 50GB Boot Disk.
-- **Docker Compose Stack**: Đặt tại `/opt/crove/sign/docker-compose.yml`, expose local port `127.0.0.1:4008:3000`.
+- **Configuration**: `e2-standard-2` (2 vCPU, 8GB RAM), 50GB Boot Disk.
+- **Docker Compose Stack**: Located at `/opt/crove/sign/docker-compose.yml`, exposing local port `127.0.0.1:4008:3000`.
 
-### 2.2. Định Tuyến & Tên Miền (Cloudflare Zero Trust)
-- **Tên miền công khai**: `https://sign.crove.com`.
+### 2.2. Routing & Domain (Cloudflare Zero Trust)
+- **Public Domain**: `https://sign.crove.com`.
 - **Cloudflare Tunnel**: `Crove-GCP` (Tunnel ID: `41d183ca-1507-4092-a2e5-a5bd988282ee`).
-- **Ingress Rule**:
+- **Ingress Configuration**:
   ```yaml
   - hostname: sign.crove.com
     service: http://crove-sign:3000
     originRequest:
       httpHostHeader: sign.crove.com
   ```
-- **Docker Network**: Container `crove-sign` gắn vào `crove_postiz-network` để `crove-cloudflared` phân giải DNS nội bộ trực tiếp qua service name `crove-sign`.
+- **Docker Network**: Container `crove-sign` attaches to `crove_postiz-network` so `crove-cloudflared` resolves internal DNS directly via service name `crove-sign`.
 
 ---
 
-## 3. Kiến Trúc Cơ Sở Dữ Liệu (Database Architecture)
+## 3. Database Architecture
 
-Crove Sign sử dụng chung cụm PostgreSQL quản trị bởi Supabase (`gulptwduchsjcsbndmua`) nhưng được **cô lập hoàn toàn ở cấp độ Schema (Schema-level Multi-Tenancy)**:
+Crove Sign shares the Supabase managed PostgreSQL instance (`gulptwduchsjcsbndmua`) with full **Schema-level Isolation (Multi-Tenancy)**:
 
-| Thông số | Giá trị |
+| Parameter | Value |
 | :--- | :--- |
-| **Schema Name** | `sign` (Độc lập với `public`, `cal`, `post`, `crm`, `dosai`, `dosafe`) |
-| **Prisma Migrations** | 163 migrations áp dụng thành công trong schema `sign` |
+| **Schema Name** | `sign` (Isolated from `public`, `cal`, `post`, `crm`, `dosai`, `dosafe`) |
+| **Prisma Migrations** | 163 migrations applied cleanly in schema `sign` |
 | **Connection Endpoint** | `aws-1-ap-southeast-1.pooler.supabase.com:5432` |
 | **Connection String** | `postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=sign&sslmode=no-verify` |
-| **Cơ chế mở rộng ID** | Tích hợp hàm `sign.nanoid()` và `sign.nanoid_optimized()` sử dụng extension `extensions.pgcrypto` |
+| **ID Generator Extension** | Functions `sign.nanoid()` and `sign.nanoid_optimized()` using `extensions.pgcrypto` |
 
-### 3.1. Các bảng dữ liệu cốt lõi
-- `sign.User`: Thông tin người dùng e-sign (map theo `email` hoặc `sub` từ DOS ID).
-- `sign.Account`: Liên kết tài khoản OAuth/OIDC với `provider = 'oidc'`, `providerAccountId = sub`.
-- `sign.Organisation` & `sign.OrganisationMember`: Tổ chức, quyền hạn thành viên, branding, seat limits.
-- `sign.Team` & `sign.TeamMember`: Nhóm làm việc trong tổ chức.
-- `sign.Envelope` & `sign.EnvelopeItem`: Tài liệu ký (PDF), trạng thái hoàn thành, audit trail.
-- `sign.Recipient` & `sign.Field` & `sign.Signature`: Người nhận, tọa độ các ô ký/text/date và chữ ký số.
+### 3.1. Core Database Entities
+- `sign.User`: User identities (mapped via `email` or `sub` from DOS ID).
+- `sign.Account`: OAuth/OIDC accounts (`provider = 'oidc'`, `providerAccountId = sub`).
+- `sign.Organisation` & `sign.OrganisationMember`: Organizations, role memberships, branding, seat limits.
+- `sign.Team` & `sign.TeamMember`: Workspaces within organizations.
+- `sign.Envelope` & `sign.EnvelopeItem`: Document envelopes (PDF), completion statuses, audit trails.
+- `sign.Recipient` & `sign.Field` & `sign.Signature`: Signers, form fields, coordinates, and digital signatures.
 
 ---
 
-## 4. Định Danh & Xác Thực (Authentication & SSO)
+## 4. Authentication & Single Sign-On (SSO)
 
-Crove Sign triển khai mô hình **SSO-First** tập trung về **DOS.Me ID** qua giao thức chuẩn **OpenID Connect (OIDC)**:
+Crove Sign operates in **SSO-First** mode authenticated via **DOS.Me ID** using standard **OpenID Connect (OIDC)**:
 
-### 4.1. Thông số Cấu Hình OIDC
+### 4.1. OIDC Configuration Parameters
 - **Provider**: DOS.Me ID (Supabase Auth OpenID Connect Provider).
 - **Well-Known Discovery**: `https://gulptwduchsjcsbndmua.supabase.co/auth/v1/.well-known/openid-configuration`.
 - **Client ID**: `18790ccb-4d71-48cd-ad24-aee5f3ced3da` (OAuth Client `Crove`).
@@ -103,37 +103,37 @@ Crove Sign triển khai mô hình **SSO-First** tập trung về **DOS.Me ID** q
 - **Redirect / Callback URI**: `https://sign.crove.com/api/auth/callback/oidc`.
 - **Prompt**: `consent`.
 
-### 4.2. Luồng Đăng Nhập (OIDC Authorization Code Flow with PKCE)
+### 4.2. Authorization Flow (OIDC Authorization Code with PKCE)
 
 ```
 User -> Browser               Crove Sign (App)             DOS.Me ID (Supabase Auth)
      │                               │                                     │
-     ├──── Bấm "DOS.Me ID" ─────────>│                                     │
-     │                               ├─ Tạo state & PKCE code_verifier ───>│
-     │                               ├─ Redirect sang /oauth/authorize ────┤
+     ├──── Click "DOS.Me ID" ───────>│                                     │
+     │                               ├─ Generate state & PKCE verifier ───>│
+     │                               ├─ Redirect to /oauth/authorize ──────┤
      │<── Redirect 302 ──────────────┤                                     │
      │                                                                     │
-     ├──── Đăng nhập / Cấp quyền trên id.dos.me ──────────────────────────>│
+     ├──── Login & Authorize on id.dos.me ────────────────────────────────>│
      │                                                                     │
-     │<── Callback 302 về /api/auth/callback/oidc?code=...&state=... ──────┤
+     │<── Callback 302 to /api/auth/callback/oidc?code=...&state=... ──────┤
      │                                                                     │
-     ├──── Gửi code & state ────────>│                                     │
-     │                               ├─ Gửi Token Request (Basic Auth) ───>│
-     │                               │<─ Trả về Access Token + ID Token ───┤
+     ├──── Send code & state ───────>│                                     │
+     │                               ├─ Token Request (Basic Auth) ───────>│
+     │                               │<─ Returns Access Token + ID Token ──┤
      │                               │                                     │
-     │                               ├─ Decode ID Token (sub, email, name) │
+     │                               ├─ Query UserInfo & ID Token Claims   │
      │                               ├─ Upsert User & Account in DB (sign) │
-     │                               ├─ Tạo Session Cookie                 │
-     │<── Redirect 302 về Dashboard ─┤                                     │
+     │                               ├─ Set Session Cookie                 │
+     │<── Redirect 302 to Dashboard ─┤                                     │
 ```
 
-### 4.3. Chính sách SSO-First (Cài đặt môi trường)
+### 4.3. SSO-First Environment Policy
 ```ini
-# Vô hiệu hóa form đăng ký/đăng nhập local bằng mật khẩu:
+# Disable local password signup and signin forms:
 NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNUP=true
 NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNIN=true
 
-# Giữ trang signin hiển thị nút DOS.Me ID & Passkey:
+# Keep signin page displaying DOS.Me ID & Passkey:
 NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT=true
 NEXT_PRIVATE_OIDC_SKIP_VERIFY=true
 NEXT_PRIVATE_OIDC_PROVIDER_LABEL="DOS.Me ID"
@@ -141,9 +141,9 @@ NEXT_PRIVATE_OIDC_PROVIDER_LABEL="DOS.Me ID"
 
 ---
 
-## 5. Kiến Trúc Đồng Bộ Tổ Chức (Organization Synchronization)
+## 5. Organization Synchronization Architecture
 
-Hệ sinh thái Crove OS áp dụng mô hình **Hybrid Organization Sync (API-First Delegation + JIT + Webhook Lifecycle)** để quản lý đa tổ chức nhất quán và đạt Single Source of Truth:
+The Crove OS ecosystem implements a **Hybrid Organization Sync (API-First Delegation + JIT + Webhook Lifecycle)** model for cross-product consistency and Single Source of Truth:
 
 ```
                       ┌───────────────────────────────┐
@@ -161,31 +161,31 @@ Hệ sinh thái Crove OS áp dụng mô hình **Hybrid Organization Sync (API-Fi
 ```
 
 ### 5.1. Just-In-Time (JIT) Provisioning & Identity Sync
-- Khi người dùng đăng nhập lần đầu hoặc tái xác thực qua DOS.Me ID, callback OIDC (`/api/auth/callback/oidc`) truy vấn ID Token và UserInfo endpoint (`/auth/v1/oauth/userinfo`).
-- **Profile Sync**: Tự động cập nhật `name` và tải avatar từ `picture` / `avatar_url` lưu vào `sign.AvatarImage`.
-- **Org Claims / Fallback Query**: Đọc danh sách organizations từ claims hoặc fallback query trực tiếp `public.organizations` + `public.org_members` qua PostgreSQL kết nối nội bộ để tự động tạo `sign.Organisation` + default `sign.Team`.
+- When a user logs in via DOS.Me ID, the callback (`/api/auth/callback/oidc`) inspects ID Token and the UserInfo endpoint (`/auth/v1/oauth/userinfo`).
+- **Profile Sync**: Updates `name` and downloads/optimizes avatar from `picture` / `avatar_url` into `sign.AvatarImage`.
+- **Org Claims / Fallback Query**: Parses organizations from claims, with direct fallback querying `public.organizations` & `public.org_members` via PostgreSQL to auto-create `sign.Organisation` + default `sign.Team`.
 
-### 5.2. API-First Delegation (Tạo Organization 2 Chiều)
-- Khi người dùng bấm **+ Create Organisation** trong giao diện Crove Sign:
-  1. Backend Sign lấy `access_token` OIDC của session hiện tại.
-  2. Gửi request ủy quyền: `POST https://api.dos.me/organizations` kèm `{ name, slug }`.
-  3. `api.dos.me` kiểm tra quota subscription $\rightarrow$ ghi vào `public.organizations` $\rightarrow$ kích hoạt `WebhookDispatcherService` bắn sự kiện `org.created` tới toàn bộ hệ sinh thái (Crove CRM, Post, Cal, Desk).
-  4. Crove Sign nhận ID chuẩn từ `api.dos.me` và lưu vào schema `sign.Organisation`.
+### 5.2. API-First Delegation (Bidirectional Org Creation)
+- When a user clicks **+ Create Organisation** inside Crove Sign:
+  1. Sign backend retrieves the active session's OIDC `access_token`.
+  2. Sends an authorized request: `POST https://api.dos.me/organizations` with `{ name, slug }`.
+  3. `api.dos.me` validates subscription quotas $\rightarrow$ writes to `public.organizations` $\rightarrow$ triggers `WebhookDispatcherService` to fan-out `org.created` to all Crove apps (CRM, Post, Cal, Desk).
+  4. Crove Sign receives the standard ID from `api.dos.me` and creates the organization in schema `sign.Organisation`.
 
 ### 5.3. Real-Time Webhook Lifecycle (`/api/webhooks/dos-org-sync`)
-- Lắng nghe và đồng bộ dữ liệu thời gian thực khi có thay đổi trên `id.dos.me` / `dos.me`:
-  - **Chữ ký bảo mật**: Xác thực HMAC-SHA256 qua header `X-DOS-Signature: sha256=<hash>` với secret `CROVE_DOS_WEBHOOK_SECRET`.
-  - **Sự kiện hỗ trợ**:
-    - `organization.created` / `org.created`: Tự động tạo Org và Team mặc định.
-    - `organization.updated` / `org.updated`: Đồng bộ tên và slug.
-    - `organization.deleted` / `org.deleted`: Xóa an toàn và giải phóng envelopes.
-    - `organization.member_added` / `org.member_added`: Thêm thành viên và gán quyền (`ADMIN`, `MANAGER`, `MEMBER`).
-    - `organization.member_removed` / `org.member_removed`: Xóa quyền thành viên.
-    - `user.updated`: Đồng bộ tên và avatar khi user đổi thông tin trên DOS.Me ID.
+- Listens for real-time changes from `id.dos.me` / `dos.me`:
+  - **Security Signature**: Validates HMAC-SHA256 via header `X-DOS-Signature: sha256=<hash>` using `CROVE_DOS_WEBHOOK_SECRET`.
+  - **Supported Events**:
+    - `organization.created` / `org.created`: Auto-creates Organization and default Team.
+    - `organization.updated` / `org.updated`: Syncs name and slug.
+    - `organization.deleted` / `org.deleted`: Safely deletes organization and cascades envelope handling.
+    - `organization.member_added` / `org.member_added`: Adds member and assigns role (`ADMIN`, `MANAGER`, `MEMBER`).
+    - `organization.member_removed` / `org.member_removed`: Removes member access.
+    - `user.updated`: Syncs display name and avatar updates.
 
 ---
 
-## 6. Danh Mục Biến Môi Trường Sản Xuất (`/opt/crove/sign/.env`)
+## 6. Production Environment Variables (`/opt/crove/sign/.env`)
 
 ```ini
 PORT=3000
@@ -225,30 +225,30 @@ NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT=true
 
 ---
 
-## 7. Quy Trình Vận Hành & Khôi Phục (Operations & Runbook)
+## 7. Operations & Runbook
 
-### 7.1. Khởi động / Khởi động lại dịch vụ
+### 7.1. Service Lifecycle Commands
 ```bash
 cd /opt/crove/sign
 sudo docker compose up -d
 sudo docker compose restart
 ```
 
-### 7.2. Kiểm tra trạng thái & Healthcheck
+### 7.2. Status & Health Check Commands
 ```bash
-# Kiểm tra container status
+# Check container status
 docker ps --filter name=crove-sign
 
-# Kiểm tra log ứng dụng
+# Inspect application logs
 docker logs --tail 50 crove-sign
 
-# Kiểm tra endpoint sức khỏe
+# Query health check endpoint
 curl -s http://127.0.0.1:4008/api/health
 ```
 
-### 7.3. Cập nhật Ingress Tunnel khi cần
-- File cấu hình Cloudflare Tunnel: `/opt/crove/tunnel/config.yml`.
-- Sau khi chỉnh sửa, khởi động lại connector:
+### 7.3. Cloudflare Tunnel Configuration
+- Tunnel config file: `/opt/crove/tunnel/config.yml`.
+- After modifying ingress rules, restart connector:
   ```bash
   cd /opt/crove
   sudo docker compose -f docker-compose.prod.yaml restart cloudflared
