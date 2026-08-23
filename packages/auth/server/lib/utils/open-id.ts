@@ -3,6 +3,7 @@ import { z } from 'zod';
 const ZOpenIdConfigurationSchema = z.object({
   authorization_endpoint: z.string(),
   token_endpoint: z.string(),
+  userinfo_endpoint: z.string().optional(),
   scopes_supported: z.array(z.string()).optional(),
 });
 
@@ -14,7 +15,7 @@ type GetOpenIdConfigurationOptions = {
 
 export const getOpenIdConfiguration = async (
   wellKnownUrl: string,
-  options: GetOpenIdConfigurationOptions = {},
+  _options: GetOpenIdConfigurationOptions = {},
 ): Promise<OpenIdConfiguration> => {
   const response = await fetch(wellKnownUrl);
 
@@ -29,15 +30,6 @@ export const getOpenIdConfiguration = async (
   // Validate required endpoints
   if (!config.authorization_endpoint) {
     throw new Error('Missing authorization_endpoint in OIDC configuration');
-  }
-
-  const supportedScopes = config.scopes_supported ?? [];
-  const requiredScopes = options.requiredScopes ?? [];
-
-  const unsupportedScopes = requiredScopes.filter((scope) => !supportedScopes.includes(scope));
-
-  if (unsupportedScopes.length > 0) {
-    throw new Error(`Requested scopes not supported by provider: ${unsupportedScopes.join(', ')}`);
   }
 
   return config;

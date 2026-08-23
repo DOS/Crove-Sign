@@ -225,7 +225,7 @@ export const validateOauth = async (options: HandleOAuthCallbackUrlOptions) => {
     throw new AppError(AppErrorCode.NOT_SETUP);
   }
 
-  const { token_endpoint } = await getOpenIdConfiguration(clientOptions.wellKnownUrl, {
+  const { token_endpoint, userinfo_endpoint } = await getOpenIdConfiguration(clientOptions.wellKnownUrl, {
     requiredScopes: clientOptions.scope,
   });
 
@@ -266,11 +266,28 @@ export const validateOauth = async (options: HandleOAuthCallbackUrlOptions) => {
   const accessTokenExpiresAt = tokens.accessTokenExpiresAt();
   const idToken = tokens.idToken();
 
+  let userinfoClaims: Record<string, unknown> = {};
+  if (userinfo_endpoint && accessToken) {
+    try {
+      const userinfoRes = await fetch(userinfo_endpoint, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (userinfoRes.ok) {
+        userinfoClaims = (await userinfoRes.json()) as Record<string, unknown>;
+      }
+    } catch (err) {
+      console.warn('[DOS ID] Error fetching userinfo endpoint:', err);
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  const claims = decodeIdToken(tokens.idToken()) as Record<string, unknown>;
+  const idTokenClaims = decodeIdToken(tokens.idToken()) as Record<string, unknown>;
+  const claims = { ...idTokenClaims, ...userinfoClaims };
 
   const email = claims.email;
-  const name = claims.name;
+  const name = claims.name || claims.display_name;
   const sub = claims.sub;
   const avatarUrl = (typeof claims.picture === 'string' ? claims.picture : typeof claims.avatar_url === 'string' ? claims.avatar_url : null) as string | null;
   const rawOrgs = (claims.organizations || claims.orgs || (claims.user_metadata as Record<string, unknown> | undefined)?.organizations || (claims.app_metadata as Record<string, unknown> | undefined)?.organizations) as DosOrgClaim[] | undefined;

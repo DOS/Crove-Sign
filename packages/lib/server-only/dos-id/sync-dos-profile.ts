@@ -279,9 +279,52 @@ export const syncDosProfileAndOrgs = async ({
     }
   }
 
-  // 3. JIT Provision Organizations from claims
-  if (Array.isArray(organizations) && organizations.length > 0) {
-    for (const org of organizations) {
+  // 3. JIT Provision Organizations from claims OR shared PostgreSQL DB fallback
+  let orgsToSync = organizations;
+
+  if (!orgsToSync || orgsToSync.length === 0) {
+    try {
+      const userEmail = email.toLowerCase();
+      const dbOrgs = await prisma.$queryRaw<
+        Array<{
+          id: string;
+          name: string;
+          slug: string | null;
+          role: string | null;
+          avatar_url: string | null;
+        }>
+      >`
+        SELECT 
+          o.id::text as id,
+          o.name,
+          COALESCE(o.slug, o.id::text) as slug,
+          CASE 
+            WHEN o.owner_id = u.id THEN 'ADMIN'
+            ELSE COALESCE(om.role, 'MEMBER')
+          END as role,
+          o.avatar_url
+        FROM public.organizations o
+        LEFT JOIN public.org_members om ON om.organization_id = o.id
+        LEFT JOIN auth.users u ON (u.email = ${userEmail} AND (u.id = o.owner_id OR u.id = om.user_id))
+        WHERE (o.owner_id = u.id OR om.user_id = u.id)
+      `;
+
+      if (Array.isArray(dbOrgs) && dbOrgs.length > 0) {
+        orgsToSync = dbOrgs.map((o) => ({
+          org_id: o.id,
+          name: o.name,
+          slug: o.slug || o.id,
+          role: o.role || 'MEMBER',
+          avatar_url: o.avatar_url,
+        }));
+      }
+    } catch (err) {
+      console.warn('[DOS ID] Direct DB fallback query for organizations skipped or failed:', err);
+    }
+  }
+
+  if (Array.isArray(orgsToSync) && orgsToSync.length > 0) {
+    for (const org of orgsToSync) {
       if (org && typeof org === 'object') {
         await syncOrganisationForUser({ userId, org }).catch((err) => {
           console.error(`[DOS ID] Failed to JIT provision org for user ${userId}:`, err);
