@@ -298,15 +298,24 @@ export const syncDosProfileAndOrgs = async ({
           o.id::text as id,
           o.name,
           COALESCE(o.slug, o.id::text) as slug,
-          CASE 
-            WHEN o.owner_id = u.id THEN 'ADMIN'
-            ELSE COALESCE(om.role, 'MEMBER')
-          END as role,
+          'ADMIN' as role,
           o.avatar_url
         FROM public.organizations o
-        LEFT JOIN public.org_members om ON om.organization_id = o.id
-        LEFT JOIN auth.users u ON (u.email = ${userEmail} AND (u.id = o.owner_id OR u.id = om.user_id))
-        WHERE (o.owner_id = u.id OR om.user_id = u.id)
+        JOIN auth.users u ON u.id = o.owner_id
+        WHERE LOWER(u.email) = ${userEmail} AND (o.is_deleted IS NULL OR o.is_deleted = false)
+
+        UNION
+
+        SELECT 
+          o.id::text as id,
+          o.name,
+          COALESCE(o.slug, o.id::text) as slug,
+          COALESCE(om.role, 'MEMBER') as role,
+          o.avatar_url
+        FROM public.organizations o
+        JOIN public.org_members om ON om.org_id = o.id
+        JOIN auth.users u ON u.id = om.user_id
+        WHERE LOWER(u.email) = ${userEmail} AND (o.is_deleted IS NULL OR o.is_deleted = false)
       `;
 
       if (Array.isArray(dbOrgs) && dbOrgs.length > 0) {
@@ -319,7 +328,7 @@ export const syncDosProfileAndOrgs = async ({
         }));
       }
     } catch (err) {
-      console.warn('[DOS ID] Direct DB fallback query for organizations skipped or failed:', err);
+      console.warn('[DOS ID] Direct DB fallback query for organizations failed:', err);
     }
   }
 
