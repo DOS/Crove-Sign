@@ -2,6 +2,7 @@ import { createCheckoutSession } from '@documenso/ee/server-only/stripe/create-c
 import { createCustomer } from '@documenso/ee/server-only/stripe/create-customer';
 import { IS_BILLING_ENABLED, NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import { createDosOrganisation } from '@documenso/lib/server-only/dos-id/create-dos-organisation';
 import { createOrganisation } from '@documenso/lib/server-only/organisation/create-organisation';
 import { getSubscriptionClaim } from '@documenso/lib/server-only/subscription/get-subscription-claim';
 import { INTERNAL_CLAIM_ID } from '@documenso/lib/types/subscription';
@@ -111,16 +112,10 @@ export const createOrganisationRoute = authenticatedProcedure
       };
     }
 
-    // Free organisations should be Personal by default.
-    const organisationType = IS_BILLING_ENABLED() ? OrganisationType.PERSONAL : OrganisationType.ORGANISATION;
-
-    const freeSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.FREE);
-
-    await createOrganisation({
+    // Delegate creation to DOS.Me API hub for bidirectional ecosystem sync
+    await createDosOrganisation({
       userId: user.id,
       name,
-      type: organisationType,
-      claim: freeSubscriptionClaim,
     });
 
     return {

@@ -143,7 +143,7 @@ NEXT_PRIVATE_OIDC_PROVIDER_LABEL="DOS.Me ID"
 
 ## 5. Kiến Trúc Đồng Bộ Tổ Chức (Organization Synchronization)
 
-Hệ sinh thái Crove OS áp dụng mô hình **Hybrid Organization Sync** để quản lý đa tổ chức nhất quán:
+Hệ sinh thái Crove OS áp dụng mô hình **Hybrid Organization Sync (API-First Delegation + JIT + Webhook Lifecycle)** để quản lý đa tổ chức nhất quán và đạt Single Source of Truth:
 
 ```
                       ┌───────────────────────────────┐
@@ -153,21 +153,35 @@ Hệ sinh thái Crove OS áp dụng mô hình **Hybrid Organization Sync** để
                                       │
               ┌───────────────────────┼───────────────────────┐
               │                       │                       │
-              ▼ (JIT / Claims)        ▼ (OIDC Claims)         ▼ (JIT / Webhook)
+              ▼ (JIT / API Delegate)  ▼ (OIDC Claims)         ▼ (JIT / Webhook)
     ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
     │    Crove Sign    │    │    Crove Post    │    │    Crove CRM     │
     │  (schema: sign)  │    │  (schema: post)  │    │  (schema: core)  │
     └──────────────────┘    └──────────────────┘    └──────────────────┘
 ```
 
-1. **Just-In-Time (JIT) Provisioning**:
-   - Khi người dùng đăng nhập lần đầu qua DOS.Me ID, Crove Sign tự động tạo bản ghi `User` và `Personal Organisation` + `Personal Team`.
-   - Nếu email đã tồn tại trước đó, hệ thống thực hiện **Account Linking** tự động liên kết `providerAccountId` (`sub`) vào user đó.
-2. **Organization Claims Sync**:
-   - ID Token / UserInfo mang thông tin `organization_id` và `role` từ DOS.Me.
-   - Callback Auth tiến hành cập nhật/tạo tổ chức doanh nghiệp tương ứng và gán vai trò (`ADMIN` hoặc `MEMBER`) trong schema `sign`.
-3. **Webhook Lifecycle (Phase 2)**:
-   - Lắng nghe sự kiện `organization.created`, `organization.member_added`, `organization.member_removed` từ DOS.Me để đồng bộ trạng thái thành viên theo thời gian thực.
+### 5.1. Just-In-Time (JIT) Provisioning & Identity Sync
+- Khi người dùng đăng nhập lần đầu hoặc tái xác thực qua DOS.Me ID, callback OIDC (`/api/auth/callback/oidc`) truy vấn ID Token và UserInfo endpoint (`/auth/v1/oauth/userinfo`).
+- **Profile Sync**: Tự động cập nhật `name` và tải avatar từ `picture` / `avatar_url` lưu vào `sign.AvatarImage`.
+- **Org Claims / Fallback Query**: Đọc danh sách organizations từ claims hoặc fallback query trực tiếp `public.organizations` + `public.org_members` qua PostgreSQL kết nối nội bộ để tự động tạo `sign.Organisation` + default `sign.Team`.
+
+### 5.2. API-First Delegation (Tạo Organization 2 Chiều)
+- Khi người dùng bấm **+ Create Organisation** trong giao diện Crove Sign:
+  1. Backend Sign lấy `access_token` OIDC của session hiện tại.
+  2. Gửi request ủy quyền: `POST https://api.dos.me/organizations` kèm `{ name, slug }`.
+  3. `api.dos.me` kiểm tra quota subscription $\rightarrow$ ghi vào `public.organizations` $\rightarrow$ kích hoạt `WebhookDispatcherService` bắn sự kiện `org.created` tới toàn bộ hệ sinh thái (Crove CRM, Post, Cal, Desk).
+  4. Crove Sign nhận ID chuẩn từ `api.dos.me` và lưu vào schema `sign.Organisation`.
+
+### 5.3. Real-Time Webhook Lifecycle (`/api/webhooks/dos-org-sync`)
+- Lắng nghe và đồng bộ dữ liệu thời gian thực khi có thay đổi trên `id.dos.me` / `dos.me`:
+  - **Chữ ký bảo mật**: Xác thực HMAC-SHA256 qua header `X-DOS-Signature: sha256=<hash>` với secret `CROVE_DOS_WEBHOOK_SECRET`.
+  - **Sự kiện hỗ trợ**:
+    - `organization.created` / `org.created`: Tự động tạo Org và Team mặc định.
+    - `organization.updated` / `org.updated`: Đồng bộ tên và slug.
+    - `organization.deleted` / `org.deleted`: Xóa an toàn và giải phóng envelopes.
+    - `organization.member_added` / `org.member_added`: Thêm thành viên và gán quyền (`ADMIN`, `MANAGER`, `MEMBER`).
+    - `organization.member_removed` / `org.member_removed`: Xóa quyền thành viên.
+    - `user.updated`: Đồng bộ tên và avatar khi user đổi thông tin trên DOS.Me ID.
 
 ---
 
