@@ -111,7 +111,7 @@ export const WebhookEditDialog = ({ trigger, webhook, ...props }: WebhookEditDia
                       </FormControl>
 
                       <FormDescription>
-                        <Trans>The URL for Documenso to send webhook events to.</Trans>
+                        <Trans>The URL for Crove Sign to send webhook events to.</Trans>
                       </FormDescription>
 
                       <FormMessage />

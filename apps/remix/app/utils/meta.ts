@@ -3,11 +3,11 @@ import { i18n, type MessageDescriptor } from '@lingui/core';
 
 export const appMetaTags = (title?: MessageDescriptor) => {
   const description =
-    'Join Documenso, the open signing infrastructure, and get a 10x better signing experience. Pricing starts at $30/mo. forever! Sign in now and enjoy a faster, smarter, and more beautiful document signing process. Integrates with your favorite tools, customizable, and expandable. Support our mission and become a part of our open-source community.';
+    'Crove Sign - Modern, secure, and intuitive digital document signing for individuals and teams. Part of the Crove OS ecosystem.';
 
   return [
     {
-      title: title ? `${i18n._(title)} - Documenso` : 'Documenso',
+      title: title ? `${i18n._(title)} - Crove Sign` : 'Crove Sign',
     },
     {
       name: 'description',
@@ -16,11 +16,11 @@ export const appMetaTags = (title?: MessageDescriptor) => {
     {
       name: 'keywords',
       content:
-        'Documenso, open source, DocuSign alternative, document signing, open signing infrastructure, open-source community, fast signing, beautiful signing, smart templates',
+        'Crove Sign, Crove, e-sign, digital signature, document signing, secure signature, open signing, Crove OS',
     },
     {
       name: 'author',
-      content: 'Documenso, Inc.',
+      content: 'Crove, Inc.',
     },
     {
       name: 'robots',
@@ -28,7 +28,7 @@ export const appMetaTags = (title?: MessageDescriptor) => {
     },
     {
       property: 'og:title',
-      content: 'Documenso - The Open Source DocuSign Alternative',
+      content: 'Crove Sign - Digital Document Signing',
     },
     {
       property: 'og:description',
@@ -48,7 +48,7 @@ export const appMetaTags = (title?: MessageDescriptor) => {
     },
     {
       name: 'twitter:site',
-      content: '@documenso',
+      content: '@crove',
     },
     {
       name: 'twitter:description',
@@ -60,3 +60,4 @@ export const appMetaTags = (title?: MessageDescriptor) => {
     },
   ];
 };
+

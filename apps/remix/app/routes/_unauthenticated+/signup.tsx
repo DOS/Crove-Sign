@@ -3,6 +3,7 @@ import {
   IS_MICROSOFT_SSO_ENABLED,
   IS_OIDC_SSO_ENABLED,
   isSignupEnabledForProvider,
+  OIDC_PROVIDER_LABEL,
 } from '@documenso/lib/constants/auth';
 import { isValidReturnTo, normalizeReturnTo } from '@documenso/lib/utils/is-valid-return-to';
 import { msg } from '@lingui/core/macro';
@@ -22,6 +23,7 @@ export function loader({ request }: Route.LoaderArgs) {
   const isGoogleSignupEnabled = IS_GOOGLE_SSO_ENABLED && isSignupEnabledForProvider('google');
   const isMicrosoftSignupEnabled = IS_MICROSOFT_SSO_ENABLED && isSignupEnabledForProvider('microsoft');
   const isOidcSignupEnabled = IS_OIDC_SSO_ENABLED && isSignupEnabledForProvider('oidc');
+  const oidcProviderLabel = OIDC_PROVIDER_LABEL;
 
   const isAnySignupEnabled =
     isEmailPasswordSignupEnabled || isGoogleSignupEnabled || isMicrosoftSignupEnabled || isOidcSignupEnabled;
@@ -39,6 +41,7 @@ export function loader({ request }: Route.LoaderArgs) {
     isGoogleSignupEnabled,
     isMicrosoftSignupEnabled,
     isOidcSignupEnabled,
+    oidcProviderLabel,
     returnTo,
   };
 }
@@ -49,6 +52,7 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
     isGoogleSignupEnabled,
     isMicrosoftSignupEnabled,
     isOidcSignupEnabled,
+    oidcProviderLabel,
     returnTo,
   } = loaderData;
 
@@ -59,6 +63,7 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
       isGoogleSignupEnabled={isGoogleSignupEnabled}
       isMicrosoftSignupEnabled={isMicrosoftSignupEnabled}
       isOidcSignupEnabled={isOidcSignupEnabled}
+      oidcProviderLabel={oidcProviderLabel}
       returnTo={returnTo}
     />
   );
