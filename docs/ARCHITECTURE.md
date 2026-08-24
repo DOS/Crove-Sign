@@ -185,7 +185,46 @@ The Crove OS ecosystem implements a **Hybrid Organization Sync (API-First Delega
 
 ---
 
-## 6. Production Environment Variables (`/opt/crove/sign/.env`)
+## 6. Branding & White-Label Architecture
+
+Crove Sign employs a **Two-Tier Branding Strategy** to ensure complete visual white-labeling while keeping upstream code conflicts to near zero:
+
+### 6.1. Tier 1: Dynamic Database-Driven Tenant Branding (Zero Code Conflict)
+- **Built-in Documenso Engine**: Documenso already includes an Enterprise White-label engine stored in `sign.OrganisationGlobalSettings`:
+  - `brandingEnabled`: Boolean flag activating custom branding.
+  - `brandingLogo`: Custom SVG/PNG logo rendered in header, recipient signing pages, and PDF signature disclosures.
+  - `brandingUrl`: Custom landing redirect URL.
+  - `brandingCompanyDetails`: Custom legal footer information.
+  - `brandingColors`: Custom primary, background, and accent color scheme.
+  - `brandingCss`: Custom PostCSS/Tailwind override stylesheets (up to 256 KB) injected into `/t/[teamUrl]/*` and signing flows.
+- **Automated Default Provisioning**:
+  - When JIT or Webhook provisions the primary `Crove` organization, default Crove branding (Logo, `#10B981` Emerald accent, and custom styles) is automatically attached without altering any upstream React component code.
+
+### 6.2. Tier 2: Global Application Assets & Meta (Isolated Asset Layer)
+- **Asset Replacement**:
+  - Header & Navigation: `apps/remix/app/components/general/branding-logo.tsx` and `@documenso/assets/logo.png`.
+  - Favicon & Manifest: `apps/remix/public/favicon*.png`, `apple-touch-icon.png`, `site.webmanifest`.
+  - OpenGraph Meta Tags: `apps/remix/app/utils/meta.ts` reading default title `Crove Sign` and description.
+- **Upstream Merge Isolation**:
+  - All brand asset changes are isolated to dedicated standalone files rather than inlined across UI templates, guaranteeing that `git merge upstream/main` applies cleanly.
+
+---
+
+## 7. Cross-Repository Architectural References
+
+Official master architecture and integration specifications are maintained in the central DOS.Me documentation tree:
+- **`docs/platform/INTEGRATION-GUIDE.md`** (*repo: dos-me*): Master technical specification for OIDC SSO, PKCE Bridges, Entitlements, Webhooks, Two-Way Org Sync, and Connections Hub.
+- **`docs/web-id/AUTH-ARCHITECTURE.md`** (*repo: dos-me*): Authentication & Login Architecture.
+- **`docs/api/PROVIDER-CONNECTIONS.md`** (*repo: dos-me*): Third-party SaaS OAuth integrations.
+- **`docs/README.md`** (*repo: dos-me*): Central documentation navigation catalog.
+
+*Note on Repository Files:*
+- `ARCHITECTURE.md` (root): Upstream Documenso codebase architecture (internal monorepo package layers).
+- `docs/ARCHITECTURE.md`: Crove OS ecosystem integration specification (Deployment, Database Schema, OIDC, 2-Way Sync, Branding).
+
+---
+
+## 8. Production Environment Variables (`/opt/crove/sign/.env`)
 
 ```ini
 PORT=3000
@@ -225,16 +264,16 @@ NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT=true
 
 ---
 
-## 7. Operations & Runbook
+## 9. Operations & Runbook
 
-### 7.1. Service Lifecycle Commands
+### 9.1. Service Lifecycle Commands
 ```bash
 cd /opt/crove/sign
 sudo docker compose up -d
 sudo docker compose restart
 ```
 
-### 7.2. Status & Health Check Commands
+### 9.2. Status & Health Check Commands
 ```bash
 # Check container status
 docker ps --filter name=crove-sign
@@ -246,7 +285,7 @@ docker logs --tail 50 crove-sign
 curl -s http://127.0.0.1:4008/api/health
 ```
 
-### 7.3. Cloudflare Tunnel Configuration
+### 9.3. Cloudflare Tunnel Configuration
 - Tunnel config file: `/opt/crove/tunnel/config.yml`.
 - After modifying ingress rules, restart connector:
   ```bash
