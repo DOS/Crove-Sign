@@ -21,8 +21,8 @@ import { BaseJobProvider } from './base';
 const QUEUE_NAME = 'documenso-jobs';
 
 const DEFAULT_CONCURRENCY = 10;
-const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_BACKOFF_DELAY = 1000;
+const DEFAULT_MAX_RETRIES = 5;
+const DEFAULT_BACKOFF_DELAY = 2000;
 
 declare global {
   // eslint-disable-next-line no-var

@@ -182,10 +182,23 @@ The Crove OS ecosystem implements a **Hybrid Organization Sync (API-First Delega
     - `organization.member_added` / `org.member_added`: Adds member and assigns role (`ADMIN`, `MANAGER`, `MEMBER`).
     - `organization.member_removed` / `org.member_removed`: Removes member access.
     - `user.updated`: Syncs display name and avatar updates.
+  - **Persistent Queue & Exponential Retry (Phase 2)**:
+    - Dedicated BullMQ job `internal.process-dos-webhook` with 5 retry attempts and exponential backoff ($2s \rightarrow 4s \rightarrow 8s \rightarrow 16s \rightarrow 32s$).
+    - 10-minute in-memory idempotency cache preventing duplicate event execution on network retries.
 
 ---
 
-## 6. Branding & White-Label Architecture
+## 6. Multi-Language Localization (i18n & Vietnamese Support)
+
+Crove Sign supports comprehensive internationalization via LinguiJS:
+- **Supported Languages**: English (`en`), German (`de`), French (`fr`), Spanish (`es`), Italian (`it`), Dutch (`nl`), Polish (`pl`), Portuguese (`pt-BR`), Japanese (`ja`), Korean (`ko`), Chinese (`zh`), and **Vietnamese (`vi`)**.
+- **Vietnamese Catalog (`packages/lib/translations/vi/web.po`)**:
+  - Full translations for Document Signing, Envelope Editor, Recipients, Settings, Teams, and Organisations.
+  - Formatted and compiled with Lingui CLI. Upstream-ready for pull request submission to `documenso/documenso`.
+
+---
+
+## 7. Branding & White-Label Architecture
 
 Crove Sign employs a **Two-Tier Branding Strategy** to ensure complete visual white-labeling while keeping upstream code conflicts to near zero:
 

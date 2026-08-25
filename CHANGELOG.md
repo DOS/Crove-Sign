@@ -4,6 +4,30 @@ All notable architectural, infrastructure, database, identity, and feature chang
 
 ---
 
+## [2026-08-25] - Vietnamese Localization & Webhook Queue Dispatcher Phase 2
+
+### 1. Vietnamese (vi) Full Localization
+- Added Vietnamese (`vi`) to `SUPPORTED_LANGUAGE_CODES` in `packages/lib/constants/locales.ts` and `SUPPORTED_LANGUAGES` in `packages/lib/constants/i18n.ts`.
+- Created full Vietnamese translation catalog `packages/lib/translations/vi/web.po` covering UI components, document signing, recipient flows, template flows, team settings, organization management, and email templates.
+- Ready for upstream PR to `documenso/documenso`.
+
+### 2. Webhook Dispatcher Phase 2 (Persistent Queue & Retry)
+- **BullMQ Background Processing**:
+  - Implemented `internal.process-dos-webhook` job definition (`packages/lib/jobs/definitions/internal/process-dos-webhook.ts`, `process-dos-webhook.handler.ts`).
+  - Configured BullMQ retry policy with **5 attempts** and exponential backoff delay starting at 2000ms ($2s \rightarrow 4s \rightarrow 8s \rightarrow 16s \rightarrow 32s$).
+- **Idempotency Guard**:
+  - Added 10-minute event ID / payload hash cache in `/api/webhooks/dos-org-sync` (`apps/remix/server/api/webhooks/dos-webhook.ts`) to avoid duplicate processing during network retries.
+
+### 3. Automated Test Suite (E2E & Unit)
+- **Unit / Integration Tests**:
+  - `packages/lib/server-only/dos-id/verify-dos-signature.test.ts`: HMAC-SHA256 signature verification tests.
+  - `packages/lib/server-only/dos-id/sync-dos-profile.test.ts`: Role mapping and JIT profile sync tests.
+- **E2E Playwright Tests**:
+  - `packages/app-tests/e2e/dos-id/dos-webhook-sync.spec.ts`: Live testing of `/api/webhooks/dos-org-sync` endpoint with valid/invalid signatures, and org/member lifecycle events.
+  - `packages/app-tests/e2e/dos-id/dos-oidc-auth.spec.ts`: OIDC auth button and callback failure handling tests.
+
+---
+
 ## [2026-08-25] - Automated Zero-Conflict Enterprise Brand Patching
 
 ### 1. Automated Branding Script (`scripts/patch-crove-branding.mjs`)
