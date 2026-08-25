@@ -264,7 +264,30 @@ NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT=true
 
 ---
 
-## 9. Operations & Runbook
+## 8. Branding & White-Label Architecture
+
+Crove Sign employs an **Automated Script & Lingui Patching Pattern** (`yarn patch:branding` / `npm run patch:branding`) via `scripts/patch-crove-branding.mjs` to ensure zero core conflict with upstream Documenso:
+
+1. **Lingui Translation Catalog Automation (`packages/lib/translations/*/web.po`)**:
+   - The script iterates through all locale catalogs and patches target `msgstr` lines (e.g. `Documenso` $\rightarrow$ `Crove Sign`, `Documenso, Inc.` $\rightarrow$ `Crove, Inc.`).
+   - Keeps `msgid` source keys completely identical to upstream Documenso so upstream components (`t\`Welcome to Documenso\``) render `"Welcome to Crove Sign"` automatically at runtime without editing React components.
+2. **PWA Manifests & Favicons**:
+   - Automatically maintains `apps/remix/public/site.webmanifest`, `packages/assets/site.webmanifest`, and `apps/remix/public/favicon.svg`.
+3. **SVG Branding Assets**:
+   - Manages standalone vector logos (`apps/remix/app/components/general/branding-logo.tsx` and `branding-logo-icon.tsx`).
+4. **Zero-Conflict Upstream Sync Workflow**:
+   ```bash
+   # Kéo code mới từ upstream về dev
+   git fetch upstream main
+   git merge upstream/main
+   
+   # Tự động hóa áp dụng toàn bộ branding Crove Sign
+   npm run patch:branding
+   ```
+
+---
+
+## 9. Deployment Configuration Reference
 
 ### 9.1. Service Lifecycle Commands
 ```bash

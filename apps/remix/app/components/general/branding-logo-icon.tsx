@@ -23,4 +23,3 @@ export const BrandingLogoIcon = ({ className = 'h-6 w-auto', ...props }: LogoPro
     </svg>
   );
 };
-

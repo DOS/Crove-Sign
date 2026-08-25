@@ -4,6 +4,21 @@ All notable architectural, infrastructure, database, identity, and feature chang
 
 ---
 
+## [2026-08-25] - Automated Zero-Conflict Enterprise Brand Patching
+
+### 1. Automated Branding Script (`scripts/patch-crove-branding.mjs`)
+- **Automated Lingui PO Translation Patching**:
+  - Implemented automated scanning and patching of all 12 localization catalogs in `packages/lib/translations/*/web.po`.
+  - Replaces all legacy brand references in `msgstr` (`Documenso` $\rightarrow$ `Crove Sign`, `Documenso, Inc.` $\rightarrow$ `Crove, Inc.`, `support@documenso.com` $\rightarrow$ `support@crove.com`, etc.) while keeping upstream `msgid` source keys intact.
+  - Guarantees **Zero Core Conflict** with upstream Documenso component files when merging future upstream updates.
+- **PWA Manifests & SVG Assets Automation**:
+  - Auto-synchronizes `apps/remix/public/site.webmanifest` and `packages/assets/site.webmanifest` with theme color `#10B981` and app name `Crove Sign`.
+  - Generates and maintains standalone SVG components (`branding-logo.tsx`, `branding-logo-icon.tsx`, `favicon.svg`).
+- **NPM / Yarn Command**:
+  - Added `npm run patch:branding` (`yarn patch:branding`) script to `package.json`.
+
+---
+
 ## [2026-08-23] - Hybrid Organization Sync & Production Mainline Release
 
 ### 1. Hybrid Organization Sync Architecture (API-First + JIT + Webhook)

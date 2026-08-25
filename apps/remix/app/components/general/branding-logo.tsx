@@ -50,4 +50,3 @@ export const BrandingLogo = ({ className = 'h-6 w-auto', ...props }: LogoProps) 
     </svg>
   );
 };
-
