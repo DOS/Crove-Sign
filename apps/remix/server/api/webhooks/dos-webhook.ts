@@ -48,11 +48,26 @@ export const dosWebhookRoute = new Hono()
 
     try {
       const payload = JSON.parse(rawBody);
+      const eventName = (payload.event || '').toLowerCase();
       const eventId =
         payload.id ||
         payload.event_id ||
         payload.eventId ||
         crypto.createHash('sha256').update(rawBody).digest('hex').slice(0, 32);
+
+      console.log(`[DOS Webhook] Received event: ${eventName} (id: ${eventId})`);
+
+      // Immediate synchronous response for ping/test events from Developer Portal
+      if (eventName === 'ping' || eventName === 'test' || eventName === 'endpoint.test') {
+        return c.json(
+          {
+            success: true,
+            message: 'Pong! Webhook endpoint is active and verified.',
+            eventId,
+          },
+          200,
+        );
+      }
 
       // Idempotency check: avoid duplicate execution for identical payloads in a 10-minute window
       if (isDuplicateEvent(eventId)) {

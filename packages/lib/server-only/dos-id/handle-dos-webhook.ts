@@ -33,6 +33,12 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
   const data = (payload.data && typeof payload.data === 'object' ? payload.data : payload) as Record<string, unknown>;
 
   switch (event) {
+    case 'ping':
+    case 'test':
+    case 'endpoint.test': {
+      return { success: true, message: 'Pong! Webhook endpoint is active and verified.' };
+    }
+
     case 'organization.created':
     case 'org.created': {
       const orgId = (data.org_id || data.id) as string | undefined;
@@ -136,7 +142,9 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
     }
 
     case 'organization.member_added':
-    case 'org.member_added': {
+    case 'org.member_added':
+    case 'organization.member.added':
+    case 'org.member.added': {
       const orgId = (data.org_id || data.id) as string | undefined;
       const userEmail = (data.user_email || data.email) as string | undefined;
       const role = data.role as string | undefined;
@@ -203,7 +211,9 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
     }
 
     case 'organization.member_removed':
-    case 'org.member_removed': {
+    case 'org.member_removed':
+    case 'organization.member.removed':
+    case 'org.member.removed': {
       const orgId = (data.org_id || data.id) as string | undefined;
       const userEmail = (data.user_email || data.email) as string | undefined;
 
