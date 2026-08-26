@@ -73,3 +73,8 @@ Translations
 - Use the t`string` macro from @lingui/react/macro to display translations in typescript code
 - t should be imported as const { t } = useLingui() where useLingui is imported from @lingui/react/macro
 - String in constants should be using the t`string` macro
+
+Response Guidelines:
+
+- Không lặp lại hay trả lời lại các câu hỏi hoặc vấn đề đã được giải đáp rõ ở các lượt trao đổi trước đó. Tập trung thẳng vào hành động và kết quả kỹ thuật của task hiện tại.
+
