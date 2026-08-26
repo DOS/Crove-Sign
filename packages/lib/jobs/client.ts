@@ -25,6 +25,7 @@ import { CLEANUP_RATE_LIMITS_JOB_DEFINITION } from './definitions/internal/clean
 import { EXECUTE_WEBHOOK_JOB_DEFINITION } from './definitions/internal/execute-webhook';
 import { EXPIRE_RECIPIENTS_SWEEP_JOB_DEFINITION } from './definitions/internal/expire-recipients-sweep';
 import { PROCESS_DOS_WEBHOOK_JOB_DEFINITION } from './definitions/internal/process-dos-webhook';
+import { PUBLISH_DOS_EVENT_JOB_DEFINITION } from './definitions/internal/publish-dos-event';
 import { PROCESS_RECIPIENT_EXPIRED_JOB_DEFINITION } from './definitions/internal/process-recipient-expired';
 import { PROCESS_SIGNING_REMINDER_JOB_DEFINITION } from './definitions/internal/process-signing-reminder';
 import { SEAL_DOCUMENT_JOB_DEFINITION } from './definitions/internal/seal-document';
@@ -61,6 +62,7 @@ export const jobsClient = new JobClient([
   BULK_SEND_TEMPLATE_JOB_DEFINITION,
   EXECUTE_WEBHOOK_JOB_DEFINITION,
   PROCESS_DOS_WEBHOOK_JOB_DEFINITION,
+  PUBLISH_DOS_EVENT_JOB_DEFINITION,
   EXPIRE_RECIPIENTS_SWEEP_JOB_DEFINITION,
   PROCESS_RECIPIENT_EXPIRED_JOB_DEFINITION,
   SEND_SIGNING_REMINDERS_SWEEP_JOB_DEFINITION,
