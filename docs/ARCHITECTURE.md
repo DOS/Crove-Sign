@@ -6,7 +6,7 @@ This document describes the technical architecture, data flows, network infrastr
 
 ## 1. System Overview
 
-**Crove Sign** is the electronic signature service (e-Signature Engine) of the Crove ecosystem, built on top of the Documenso v2.17.0 core (React Router v7 / Remix + Hono + Prisma + PDF Signing Engine).
+**Crove Sign** is the electronic signature engine of the Crove ecosystem, built on top of the Documenso v2.17.0 core (React Router v7 / Remix + Hono + Prisma + PDF Signing Engine).
 
 ```
                         ┌────────────────────────────────────────┐
@@ -118,122 +118,112 @@ User -> Browser               Crove Sign (App)             DOS.Me ID (Supabase A
      │<── Callback 302 to /api/auth/callback/oidc?code=...&state=... ──────┤
      │                                                                     │
      ├──── Send code & state ───────>│                                     │
-     │                               ├─ Token Request (Basic Auth) ───────>│
-     │                               │<─ Returns Access Token + ID Token ──┤
+     │                               ├─ Exchange code for tokens ─────────>│
+     │                               │<─ Return access_token, id_token ────┤
      │                               │                                     │
-     │                               ├─ Query UserInfo & ID Token Claims   │
-     │                               ├─ Upsert User & Account in DB (sign) │
-     │                               ├─ Set Session Cookie                 │
-     │<── Redirect 302 to Dashboard ─┤                                     │
-```
-
-### 4.3. SSO-First Environment Policy
-```ini
-# Disable local password signup and signin forms:
-NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNUP=true
-NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNIN=true
-
-# Keep signin page displaying DOS.Me ID & Passkey:
-NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT=true
-NEXT_PRIVATE_OIDC_SKIP_VERIFY=true
-NEXT_PRIVATE_OIDC_PROVIDER_LABEL="DOS.Me ID"
+     │                               ├─ Fetch claims via /userinfo ───────>│
+     │                               │<─ Return UserInfo Claims ───────────┤
+     │                               │                                     │
+     │                               ├─ JIT Sync Profile, Avatar, Orgs ────┤
+     │                               ├─ Establish session cookie ──────────┤
+     │<── Redirect to /inbox ────────┤                                     │
 ```
 
 ---
 
-## 5. Organization Synchronization Architecture
+## 5. Crove OS 2-Tier Hybrid Architecture & Data Sync
 
-The Crove OS ecosystem implements a **Hybrid Organization Sync (API-First Delegation + JIT + Webhook Lifecycle)** model for cross-product consistency and Single Source of Truth:
+To balance instant UI performance (0ms local query latency) and relational integrity with AI Agent capabilities, Crove OS adopts a **2-Tier Hybrid Architecture**:
 
 ```
-                      ┌───────────────────────────────┐
-                      │    DOS.Me Core Workspace      │
-                      │ (public.organizations / roles)│
-                      └───────────────┬───────────────┘
-                                      │
-              ┌───────────────────────┼───────────────────────┐
-              │                       │                       │
-              ▼ (JIT / API Delegate)  ▼ (OIDC Claims)         ▼ (JIT / Webhook)
-    ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-    │    Crove Sign    │    │    Crove Post    │    │    Crove CRM     │
-    │  (schema: sign)  │    │  (schema: post)  │    │  (schema: core)  │
-    └──────────────────┘    └──────────────────┘    └──────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                           CROVE OS 2-TIER HYBRID ARCHITECTURE                           │
+├──────────────────────────────────────────┬──────────────────────────────────────────────┤
+│ TẦNG 1: Đồng bộ Dữ liệu Danh tính        │ TẦNG 2: Deep Agentic Business Actions        │
+│ (Companies, Customers, Organizations)    │ (Tạo Deal, Gia hạn, Giao Task, Tra cứu HĐ)  │
+├──────────────────────────────────────────┼──────────────────────────────────────────────┤
+│        DATABASE SYNCHRONIZATION          │                 MCP PROTOCOL                 │
+│    (PostgreSQL Mirror nội bộ < 5ms)      │      (Model Context Protocol Tool Calling)   │
+│                   │                      │                      │                       │
+│  • Twenty CRM / DOS-Me: Master SSOT      │  • twenty_crm.create_opportunity(...)        │
+│  • Crove Desk: desk.t_company / customer │  • twenty_crm.get_subscription_status(...)   │
+│  • Crove Sign: sign.Organisation         │  • twenty_crm.create_task(...)               │
+│  • Bi-directional Webhook Dispatch       │  • crove_sign.get_contracts(...)             │
+│  • JIT (Just-In-Time) Onboarding         │  • Thực thi logic nghiệp vụ sâu & validation │
+└──────────────────────────────────────────┴──────────────────────────────────────────────┘
 ```
 
-### 5.1. Just-In-Time (JIT) Provisioning & Identity Sync
-- When a user logs in via DOS.Me ID, the callback (`/api/auth/callback/oidc`) inspects ID Token and the UserInfo endpoint (`/auth/v1/oauth/userinfo`).
-- **Profile Sync**: Updates `name` and downloads/optimizes avatar from `picture` / `avatar_url` into `sign.AvatarImage`.
-- **Org Claims / Fallback Query**: Parses organizations from claims, with direct fallback querying `public.organizations` & `public.org_members` via PostgreSQL to auto-create `sign.Organisation` + default `sign.Team`.
+### 5.1. Tier 1: Single Source of Truth (SSOT) & Inbound JIT Provisioning
+- **Central Storage**: `public.organizations` and `public.org_members` on Supabase / DOS.Me.
+- **Inbound JIT Sync**: During OIDC login at `/api/auth/callback/oidc`:
+  1. Extracts `name`, `picture` (avatar), and `organizations` array from OIDC ID Token & `/auth/v1/oauth/userinfo`.
+  2. Auto-downloads and optimizes avatar into `sign.AvatarImage`.
+  3. Upserts `sign.Organisation`, default `sign.Team`, and assigns `sign.OrganisationMember` roles without manual user onboarding.
 
-### 5.2. API-First Delegation (Bidirectional Org Creation)
-- When a user clicks **+ Create Organisation** inside Crove Sign:
-  1. Sign backend retrieves the active session's OIDC `access_token`.
-  2. Sends an authorized request: `POST https://api.dos.me/organizations` with `{ name, slug }`.
-  3. `api.dos.me` validates subscription quotas $\rightarrow$ writes to `public.organizations` $\rightarrow$ triggers `WebhookDispatcherService` to fan-out `org.created` to all Crove apps (CRM, Post, Cal, Desk).
-  4. Crove Sign receives the standard ID from `api.dos.me` and creates the organization in schema `sign.Organisation`.
+### 5.2. Tier 1: Outbound Organization Creation API (No Popup / No Redirect)
+When a user clicks **"+ Create Organisation"** in Crove Sign:
+1. Crove Sign retrieves the user's OIDC `access_token`.
+2. Sends: `POST https://api.dos.me/organizations` with `{ name, slug }`.
+3. `api.dos.me` validates quotas $\rightarrow$ writes to `public.organizations` $\rightarrow$ returns official UUID.
+4. Crove Sign uses the returned `id` as the primary key in `sign.Organisation` to guarantee global ID consistency.
 
-### 5.3. Real-Time Webhook Lifecycle (`/api/webhooks/dos-org-sync`)
-- Listens for real-time changes from `id.dos.me` / `dos.me`:
-  - **Security Signature**: Validates HMAC-SHA256 via header `X-DOS-Signature: sha256=<hash>` using `CROVE_DOS_WEBHOOK_SECRET`.
-  - **Supported Events**:
-    - `organization.created` / `org.created`: Auto-creates Organization and default Team.
-    - `organization.updated` / `org.updated`: Syncs name and slug.
-    - `organization.deleted` / `org.deleted`: Safely deletes organization and cascades envelope handling.
-    - `organization.member_added` / `org.member_added`: Adds member and assigns role (`ADMIN`, `MANAGER`, `MEMBER`).
-    - `organization.member_removed` / `org.member_removed`: Removes member access.
-    - `user.updated`: Syncs display name and avatar updates.
-  - **Persistent Queue & Exponential Retry (Phase 2)**:
-    - Dedicated BullMQ job `internal.process-dos-webhook` with 5 retry attempts and exponential backoff ($2s \rightarrow 4s \rightarrow 8s \rightarrow 16s \rightarrow 32s$).
-    - 10-minute in-memory idempotency cache preventing duplicate event execution on network retries.
+### 5.3. Tier 1: Real-Time Webhook Lifecycle (`/api/webhooks/dos-org-sync`)
+- **Webhook Ingress**: `POST /api/webhooks/dos-org-sync`.
+- **HMAC-SHA256 Verification**: Header `X-DOS-Signature: sha256=<hex_digest>` verified against `CROVE_DOS_WEBHOOK_SECRET`.
+- **Supported Lifecycle Events**:
+  - `organization.created` / `org.created`: Auto-provisions organization and team.
+  - `organization.updated` / `org.updated`: Syncs name and slug.
+  - `organization.deleted` / `org.deleted`: Cascades cleanup and archive.
+  - `organization.member_added` / `org.member_added`: Adds member and maps roles (`ADMIN`, `MANAGER`, `MEMBER`).
+  - `organization.member_removed` / `org.member_removed`: Removes membership.
+  - `user.updated`: Syncs user display name and avatar.
+- **Persistent Queue & Exponential Retry (BullMQ)**:
+  - Job definition `internal.process-dos-webhook` configured with **5 retries** and exponential backoff ($2s \rightarrow 4s \rightarrow 8s \rightarrow 16s \rightarrow 32s$).
+  - 10-minute in-memory idempotency cache preventing duplicate event execution on network retries.
+
+### 5.4. Tier 2: Deep Agentic Business Actions via MCP Protocol
+When AI Agents (e.g. Crove Desk AI, DOSClaw) require contextual information or stateful side-effects, they invoke Model Context Protocol (MCP) tools:
+
+| MCP Tool Name | Target System | Input Params | Purpose |
+| :--- | :--- | :--- | :--- |
+| `crove_sign.get_contracts` | Crove Sign | `{ customer_email, company_id }` | Real-time lookup of signed, pending, and expired electronic contracts |
+| `twenty_crm.get_subscription_status` | Twenty CRM | `{ company_id }` | Query subscription tiers, seats, and quotas |
+| `twenty_crm.create_opportunity` | Twenty CRM | `{ company_id, name, amount, stage }` | Create sales deal / upgrade request |
+| `twenty_crm.create_task` | Twenty CRM | `{ title, due_date, assignee_id, contact_id }` | Schedule follow-up sales consultation task |
 
 ---
 
 ## 6. Multi-Language Localization (i18n & Vietnamese Support)
 
-Crove Sign supports comprehensive internationalization via LinguiJS:
+Crove Sign supports internationalization via LinguiJS:
 - **Supported Languages**: English (`en`), German (`de`), French (`fr`), Spanish (`es`), Italian (`it`), Dutch (`nl`), Polish (`pl`), Portuguese (`pt-BR`), Japanese (`ja`), Korean (`ko`), Chinese (`zh`), and **Vietnamese (`vi`)**.
 - **Vietnamese Catalog (`packages/lib/translations/vi/web.po`)**:
   - Full translations for Document Signing, Envelope Editor, Recipients, Settings, Teams, and Organisations.
-  - Formatted and compiled with Lingui CLI. Upstream-ready for pull request submission to `documenso/documenso`.
+  - Formatted and compiled with Lingui CLI.
+  - Submitted upstream to Documenso via [PR #3307](https://github.com/documenso/documenso/pull/3307).
 
 ---
 
 ## 7. Branding & White-Label Architecture
 
-Crove Sign employs a **Two-Tier Branding Strategy** to ensure complete visual white-labeling while keeping upstream code conflicts to near zero:
+Crove Sign employs an **Automated Script & Lingui Patching Pattern** (`yarn patch:branding` / `npm run patch:branding`) via `scripts/patch-crove-branding.mjs` to ensure zero core conflict with upstream Documenso:
 
-### 6.1. Tier 1: Dynamic Database-Driven Tenant Branding (Zero Code Conflict)
-- **Built-in Documenso Engine**: Documenso already includes an Enterprise White-label engine stored in `sign.OrganisationGlobalSettings`:
-  - `brandingEnabled`: Boolean flag activating custom branding.
-  - `brandingLogo`: Custom SVG/PNG logo rendered in header, recipient signing pages, and PDF signature disclosures.
-  - `brandingUrl`: Custom landing redirect URL.
-  - `brandingCompanyDetails`: Custom legal footer information.
-  - `brandingColors`: Custom primary, background, and accent color scheme.
-  - `brandingCss`: Custom PostCSS/Tailwind override stylesheets (up to 256 KB) injected into `/t/[teamUrl]/*` and signing flows.
-- **Automated Default Provisioning**:
-  - When JIT or Webhook provisions the primary `Crove` organization, default Crove branding (Logo, `#10B981` Emerald accent, and custom styles) is automatically attached without altering any upstream React component code.
-
-### 6.2. Tier 2: Global Application Assets & Meta (Isolated Asset Layer)
-- **Asset Replacement**:
-  - Header & Navigation: `apps/remix/app/components/general/branding-logo.tsx` and `@documenso/assets/logo.png`.
-  - Favicon & Manifest: `apps/remix/public/favicon*.png`, `apple-touch-icon.png`, `site.webmanifest`.
-  - OpenGraph Meta Tags: `apps/remix/app/utils/meta.ts` reading default title `Crove Sign` and description.
-- **Upstream Merge Isolation**:
-  - All brand asset changes are isolated to dedicated standalone files rather than inlined across UI templates, guaranteeing that `git merge upstream/main` applies cleanly.
-
----
-
-## 7. Cross-Repository Architectural References
-
-Official master architecture and integration specifications are maintained in the central DOS.Me documentation tree:
-- **`docs/platform/INTEGRATION-GUIDE.md`** (*repo: dos-me*): Master technical specification for OIDC SSO, PKCE Bridges, Entitlements, Webhooks, Two-Way Org Sync, and Connections Hub.
-- **`docs/web-id/AUTH-ARCHITECTURE.md`** (*repo: dos-me*): Authentication & Login Architecture.
-- **`docs/api/PROVIDER-CONNECTIONS.md`** (*repo: dos-me*): Third-party SaaS OAuth integrations.
-- **`docs/README.md`** (*repo: dos-me*): Central documentation navigation catalog.
-
-*Note on Repository Files:*
-- `ARCHITECTURE.md` (root): Upstream Documenso codebase architecture (internal monorepo package layers).
-- `docs/ARCHITECTURE.md`: Crove OS ecosystem integration specification (Deployment, Database Schema, OIDC, 2-Way Sync, Branding).
+1. **Lingui Translation Catalog Automation (`packages/lib/translations/*/web.po`)**:
+   - Patches target `msgstr` lines (`Documenso` $\rightarrow$ `Crove Sign`, `Documenso, Inc.` $\rightarrow$ `Crove, Inc.`).
+   - Keeps `msgid` source keys completely identical to upstream Documenso so upstream components render `"Welcome to Crove Sign"` automatically at runtime.
+2. **PWA Manifests & Favicons**:
+   - Automatically maintains `apps/remix/public/site.webmanifest`, `packages/assets/site.webmanifest`, and `apps/remix/public/favicon.svg`.
+3. **SVG Branding Assets**:
+   - Manages standalone vector logos (`apps/remix/app/components/general/branding-logo.tsx` and `branding-logo-icon.tsx`).
+4. **Zero-Conflict Upstream Sync Workflow**:
+   ```bash
+   # Kéo code mới từ upstream về dev
+   git fetch upstream main
+   git merge upstream/main
+   
+   # Tự động hóa áp dụng toàn bộ branding Crove Sign
+   npm run patch:branding
+   ```
 
 ---
 
@@ -269,6 +259,11 @@ NEXT_PRIVATE_OIDC_PROVIDER_LABEL="DOS.Me ID"
 NEXT_PRIVATE_OIDC_SKIP_VERIFY=true
 NEXT_PRIVATE_OIDC_PROMPT="consent"
 
+# Ecosystem Webhooks & Queues
+CROVE_DOS_WEBHOOK_SECRET="<WEBHOOK_SECRET>"
+NEXT_PRIVATE_JOBS_PROVIDER="bullmq"
+NEXT_PRIVATE_REDIS_URL="redis://127.0.0.1:6379"
+
 # SSO-First Access Controls
 NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNUP=true
 NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNIN=true
@@ -277,36 +272,13 @@ NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT=true
 
 ---
 
-## 8. Branding & White-Label Architecture
-
-Crove Sign employs an **Automated Script & Lingui Patching Pattern** (`yarn patch:branding` / `npm run patch:branding`) via `scripts/patch-crove-branding.mjs` to ensure zero core conflict with upstream Documenso:
-
-1. **Lingui Translation Catalog Automation (`packages/lib/translations/*/web.po`)**:
-   - The script iterates through all locale catalogs and patches target `msgstr` lines (e.g. `Documenso` $\rightarrow$ `Crove Sign`, `Documenso, Inc.` $\rightarrow$ `Crove, Inc.`).
-   - Keeps `msgid` source keys completely identical to upstream Documenso so upstream components (`t\`Welcome to Documenso\``) render `"Welcome to Crove Sign"` automatically at runtime without editing React components.
-2. **PWA Manifests & Favicons**:
-   - Automatically maintains `apps/remix/public/site.webmanifest`, `packages/assets/site.webmanifest`, and `apps/remix/public/favicon.svg`.
-3. **SVG Branding Assets**:
-   - Manages standalone vector logos (`apps/remix/app/components/general/branding-logo.tsx` and `branding-logo-icon.tsx`).
-4. **Zero-Conflict Upstream Sync Workflow**:
-   ```bash
-   # Kéo code mới từ upstream về dev
-   git fetch upstream main
-   git merge upstream/main
-   
-   # Tự động hóa áp dụng toàn bộ branding Crove Sign
-   npm run patch:branding
-   ```
-
----
-
-## 9. Deployment Configuration Reference
+## 9. Operations & Runbook
 
 ### 9.1. Service Lifecycle Commands
 ```bash
 cd /opt/crove/sign
-sudo docker compose up -d
-sudo docker compose restart
+sudo docker compose pull
+sudo docker compose up -d --force-recreate
 ```
 
 ### 9.2. Status & Health Check Commands
@@ -328,3 +300,17 @@ curl -s http://127.0.0.1:4008/api/health
   cd /opt/crove
   sudo docker compose -f docker-compose.prod.yaml restart cloudflared
   ```
+
+---
+
+## 10. Cross-Repository Architectural References
+
+Official master architecture and integration specifications are maintained in the central DOS.Me documentation tree:
+- **`docs/api/CRM-DESK-SYNC-WEBHOOKS.md`** (*repo: dos-me*): Webhook Ingress, Event Schemas, and Verification Contracts.
+- **`docs/platform/INTEGRATION-GUIDE.md`** (*repo: dos-me*): Master technical specification for OIDC SSO, PKCE Bridges, Entitlements, Webhooks, Two-Way Org Sync, and Connections Hub.
+- **`docs/web-id/AUTH-ARCHITECTURE.md`** (*repo: dos-me*): Authentication & Login Architecture.
+- **`https://dev.dos.me/webhooks`**: Developer Portal for Webhook Registration & Delivery Logs.
+
+*Note on Repository Files:*
+- `ARCHITECTURE.md` (root): Upstream Documenso codebase architecture (internal monorepo package layers).
+- `docs/ARCHITECTURE.md`: Crove OS ecosystem integration specification (Deployment, Database Schema, OIDC, 2-Tier Hybrid Sync, Branding).
