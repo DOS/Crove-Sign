@@ -301,6 +301,24 @@ curl -s http://127.0.0.1:4008/api/health
   sudo docker compose -f docker-compose.prod.yaml restart cloudflared
   ```
 
+### 9.4. Automated Database Backup & Disaster Recovery (Schema: sign)
+- **Backup Script**: `/opt/crove/sign/scripts/backup-sign-db.sh` (`scripts/backup-sign-db.sh`).
+- **Restore Script**: `/opt/crove/sign/scripts/restore-sign-db.sh` (`scripts/restore-sign-db.sh`).
+- **Storage Path**: `/opt/crove/sign/backups/`.
+- **Retention Policy**: Automated gzip compression (`.sql.gz`) and pruning of snapshots older than 30 days.
+- **Cron Schedule (Daily at 03:00 UTC / 10:00 AM UTC+7)**:
+  ```bash
+  0 3 * * * /opt/crove/sign/scripts/backup-sign-db.sh /opt/crove/sign/.env >> /opt/crove/sign/backups/backup.log 2>&1
+  ```
+- **Manual Backup Trigger**:
+  ```bash
+  sudo /opt/crove/sign/scripts/backup-sign-db.sh /opt/crove/sign/.env
+  ```
+- **Restore Runbook**:
+  ```bash
+  sudo /opt/crove/sign/scripts/restore-sign-db.sh /opt/crove/sign/backups/sign-backup-latest.sql.gz /opt/crove/sign/.env
+  ```
+
 ---
 
 ## 10. Cross-Repository Architectural References
