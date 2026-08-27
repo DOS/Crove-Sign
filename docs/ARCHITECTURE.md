@@ -76,8 +76,9 @@ Crove Sign shares the Supabase managed PostgreSQL instance (`gulptwduchsjcsbndmu
 | :--- | :--- |
 | **Schema Name** | `sign` (Isolated from `public`, `cal`, `post`, `crm`, `dosai`, `dosafe`) |
 | **Prisma Migrations** | 163 migrations applied cleanly in schema `sign` |
-| **Connection Endpoint** | `aws-1-ap-southeast-1.pooler.supabase.com:5432` |
-| **Connection String** | `postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=sign&sslmode=no-verify` |
+| **Connection Endpoint** | `aws-1-ap-southeast-1.pooler.supabase.com` (Port 6543 for Runtime App / Port 5432 for Migrations) |
+| **Runtime Connection String (Transaction Pooler)** | `postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?schema=sign&sslmode=no-verify&pgbouncer=true&connection_limit=5` |
+| **Direct Connection String (Session Pooler)** | `postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=sign&sslmode=no-verify` |
 | **ID Generator Extension** | Functions `sign.nanoid()` and `sign.nanoid_optimized()` using `extensions.pgcrypto` |
 
 ### 3.1. Core Database Entities
@@ -242,8 +243,8 @@ NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY="<HEX_16_BYTES>"
 NEXT_PUBLIC_WEBAPP_URL="https://sign.crove.com"
 NEXT_PRIVATE_INTERNAL_WEBAPP_URL="http://localhost:3000"
 
-# Database Connection (Supabase Session Pooler - schema: sign)
-NEXT_PRIVATE_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=sign&sslmode=no-verify"
+# Database Connection (Supabase Transaction Pooler - schema: sign)
+NEXT_PRIVATE_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?schema=sign&sslmode=no-verify&pgbouncer=true&connection_limit=5"
 NEXT_PRIVATE_DIRECT_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=sign&sslmode=no-verify"
 
 # Storage & Mail
