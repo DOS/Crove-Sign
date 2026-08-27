@@ -216,14 +216,17 @@ Crove Sign employs an **Automated Script & Lingui Patching Pattern** (`yarn patc
 3. **SVG Branding Assets**:
    - Manages standalone vector logos (`apps/remix/app/components/general/branding-logo.tsx` and `branding-logo-icon.tsx`).
 4. **Zero-Conflict Upstream Sync Workflow**:
-   ```bash
-   # Kéo code mới từ upstream về dev
-   git fetch upstream main
-   git merge upstream/main
-   
-   # Tự động hóa áp dụng toàn bộ branding Crove Sign
-   npm run patch:branding
-   ```
+   - **Local One-Command Sync**:
+     ```bash
+     # Tự động fetch tag mới từ upstream, merge và patch branding
+     npm run sync:upstream
+     # hoặc chỉ định tag cụ thể:
+     node scripts/sync-upstream.mjs --tag=v2.18.0
+     ```
+   - **Automated GitHub Actions Pipeline (`.github/workflows/sync-upstream.yml`)**:
+     - Định kỳ 12 tiếng tự động kiểm tra releases mới từ `documenso/documenso`.
+     - Khi có release mới (ví dụ `v2.18.0`), tự động merge vào `main`, chạy `patch:branding`, tạo GitHub Release tương ứng trong `DOS/Crove-Sign` và push tag `v2.18.0`.
+     - Tag push tự động kích hoạt workflow `.github/workflows/build-docker.yml` để build và push image `ghcr.io/dos/crove-sign:v2.18.0` và `:latest` lên GitHub Container Registry (không tự ý deploy lên production).
 
 ---
 

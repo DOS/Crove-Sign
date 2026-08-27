@@ -9,6 +9,7 @@
   "scripts": {
     "postinstall": "patch-package",
     "patch:branding": "node scripts/patch-crove-branding.mjs",
+    "sync:upstream": "node scripts/sync-upstream.mjs",
     "build": "turbo run build",
     "dev": "npm run translate:compile && turbo run dev --filter=@documenso/remix",
     "dev:remix": "npm run translate:compile && turbo run dev --filter=@documenso/remix",

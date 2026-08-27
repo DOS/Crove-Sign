@@ -4,6 +4,25 @@ All notable architectural, infrastructure, database, identity, and feature chang
 
 ---
 
+## [2026-08-27] - Automated Upstream Release Sync & Container Build Pipeline
+
+### 1. Upstream Sync Workflow (`.github/workflows/sync-upstream.yml`)
+- **Automated Upstream Polling**: Runs every 12 hours via cron schedule (and on manual `workflow_dispatch`) to detect new official releases from `documenso/documenso`.
+- **Auto-Merge & Brand Patching**:
+  - Automatically fetches the target release tag from upstream.
+  - Merges into `main`, runs `scripts/patch-crove-branding.mjs` to enforce Crove branding, commits changes, and tags the release.
+  - Automatically publishes a GitHub Release in `DOS/Crove-Sign` matching the upstream version.
+- **Docker Image Auto-Build**: Tag push triggers `.github/workflows/build-docker.yml` to build and push `ghcr.io/dos/crove-sign:<tag>` and `:latest` to GHCR without deploying to production.
+
+### 2. Local Sync Script (`scripts/sync-upstream.mjs`)
+- Added `npm run sync:upstream` command to trigger one-command local sync, merge, and brand patching.
+
+### 3. Database Backup & Disaster Recovery Runbook
+- Added automated daily database backup script `scripts/backup-sign-db.sh` (schema `sign` dump with gzip compression and 30-day retention).
+- Added restore runbook `scripts/restore-sign-db.sh` for disaster recovery.
+
+---
+
 ## [2026-08-25] - Vietnamese Localization & Webhook Queue Dispatcher Phase 2
 
 ### 1. Vietnamese (vi) Full Localization
