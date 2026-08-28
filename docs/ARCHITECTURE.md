@@ -194,7 +194,27 @@ When AI Agents (e.g. Crove Desk AI, DOSClaw) require contextual information or s
 
 ---
 
-## 6. Multi-Language Localization (i18n & Vietnamese Support)
+## 6. Decentralized EAS & Blockchain Document Attestation (DOS Chain)
+
+Crove Sign integrates an on-chain/off-chain attestation engine following the **Ethereum Attestation Service (EAS)** and **Sign Protocol** standard:
+
+### 6.1. Schema Specification
+- **Schema Signature**:
+  ```solidity
+  bytes32 documentHash, string envelopeId, string title, string[] signers, uint64 completedAt, string proofUri
+  ```
+- **Schema UID**: `0x7c9b846e4b52479e956554a938c5a2c4e231189ab8c42a265696d5e1654e5659`
+
+### 6.2. Dual-Mode Attestation Flow
+1. **Automated Sealing Hook**: When a document completes signing (`seal-document.handler.ts`), the system calculates deterministic SHA-256 and EVM Keccak-256 hashes of the sealed PDF file.
+2. **EAS Verifiable Package (EIP-712)**: Generates a signed off-chain attestation package (including UID, schema, signers, timestamp, and signature) that can be verified in real-time on any device without central server dependencies.
+3. **Public Independent Verification API**:
+   - `GET /api/v1/attestation/:envelopeId`: Retrieve the full verifiable EAS Attestation Package.
+   - `POST /api/v1/attestation/verify`: Public drag & drop endpoint accepting raw PDF bytes and returning verification integrity (`VALID | TAMPERED | NOT_FOUND`).
+
+---
+
+## 7. Multi-Language Localization (i18n & Vietnamese Support)
 
 Crove Sign supports internationalization via LinguiJS:
 - **Supported Languages**: English (`en`), German (`de`), French (`fr`), Spanish (`es`), Italian (`it`), Dutch (`nl`), Polish (`pl`), Portuguese (`pt-BR`), Japanese (`ja`), Korean (`ko`), Chinese (`zh`), and **Vietnamese (`vi`)**.
