@@ -25,7 +25,6 @@ import { requestId } from 'hono/request-id';
 import type { Logger } from 'pino';
 
 import { aiRoute } from './api/ai/route';
-import { attestationRoute } from './api/blockchain/attestation-route';
 import { downloadRoute } from './api/download/download';
 import { filesRoute } from './api/files/files';
 import { dosWebhookRoute } from './api/webhooks/dos-webhook';
@@ -120,9 +119,6 @@ app.route('/api/csc', csc);
 
 // DOS.Me Webhook endpoints.
 app.route('/api/webhooks', dosWebhookRoute);
-
-// Decentralized EAS & Blockchain Attestation Verification endpoints.
-app.route('/api/v1/attestation', attestationRoute);
 
 // API servers.
 app.route('/api/v1', tsRestHonoApp);

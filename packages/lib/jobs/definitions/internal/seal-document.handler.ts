@@ -22,7 +22,6 @@ import { insertFieldInPDFV2 } from '../../../server-only/pdf/insert-field-in-pdf
 import { legacy_insertFieldInPDF } from '../../../server-only/pdf/legacy-insert-field-in-pdf';
 import { getTeamSettings } from '../../../server-only/team/get-team-settings';
 import { triggerWebhook } from '../../../server-only/webhooks/trigger/trigger-webhook';
-import { attestCompletedDocument } from '../../../server-only/blockchain/attest-document';
 import { DOCUMENT_AUDIT_LOG_TYPE, type TDocumentAuditLog } from '../../../types/document-audit-logs';
 import { isTspEnvelope } from '../../../types/signature-level';
 import { mapEnvelopeToWebhookDocumentPayload, ZWebhookDocumentSchema } from '../../../types/webhook-payload';
@@ -340,13 +339,6 @@ export const run = async ({ payload, io }: { payload: TSealDocumentJobDefinition
     userId: updatedEnvelope.userId,
     teamId: updatedEnvelope.teamId ?? undefined,
   });
-
-  // Decentralized EAS / Blockchain Attestation for completed envelopes
-  if (!isRejected) {
-    void attestCompletedDocument({ envelopeId }).catch((err) => {
-      console.warn(`[Attestation] Background attestation failed for envelope ${envelopeId}:`, err);
-    });
-  }
 
   let shouldSendCompletedEmail = sendEmail && !isResealing && !isRejected;
 
