@@ -4,6 +4,24 @@ All notable architectural, infrastructure, database, identity, and feature chang
 
 ---
 
+## [2026-08-28] - Smart Contract CroveAttestationResolver & EAS Interface
+
+### 1. Smart Contract Implementation (`contracts/CroveAttestationResolver.sol`)
+- **EAS Schema Resolver**:
+  - Implemented `CroveAttestationResolver` inheriting from `SchemaResolver` connected to pre-deployed EAS Core on DOS Chain (`0x79799066b2b5072E4B154Bedde14Dbc22caa0EA5`).
+  - Added dedicated access control `authorizedAttesters` ensuring only designated Crove Signer wallets can create attestations under this schema.
+- **On-Chain Reverse Lookup**:
+  - Maintained on-chain mapping `_documentHashToUIDs` (`bytes32 => bytes32[]`) and `_anchorIdToUIDs` (`bytes32 => bytes32[]`).
+  - Provided zero-login public verification view functions: `getAttestationUIDsByDocumentHash`, `getLatestAttestationUID`, `isDocumentAttested`, and `verifyDocument`.
+- **EAS Standards & Interfaces (`contracts/interfaces/`, `contracts/resolver/`)**:
+  - Added `IEAS.sol` with standard `Attestation` struct.
+  - Added `ISchemaResolver.sol` and abstract `SchemaResolver.sol`.
+- **TypeScript ABI & Deployment Guide**:
+  - Added TypeScript ABI artifact `packages/lib/server-only/blockchain/resolver-abi.ts` with schema v2 specification.
+  - Added deployment & schema registration helper script `scripts/deploy-crove-resolver.mjs`.
+
+---
+
 ## [2026-08-27] - Automated Upstream Release Sync & Container Build Pipeline
 
 ### 1. Upstream Sync Workflow (`.github/workflows/sync-upstream.yml`)

@@ -296,7 +296,7 @@ NEXT_PUBLIC_WEBAPP_URL="https://sign.crove.com"
 NEXT_PRIVATE_INTERNAL_WEBAPP_URL="http://localhost:3000"
 
 # Database Connection (Supabase Transaction Pooler - schema: sign)
-NEXT_PRIVATE_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?schema=sign&sslmode=no-verify&pgbouncer=true&connection_limit=5"
+NEXT_PRIVATE_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?schema=sign&sslmode=no-verify&pgbouncer=true&connection_limit=5&options=-csearch_path%3Dsign,public"
 NEXT_PRIVATE_DIRECT_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=sign&sslmode=no-verify"
 
 # Storage & Mail
