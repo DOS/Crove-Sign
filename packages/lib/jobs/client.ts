@@ -18,6 +18,7 @@ import { SEND_SIGNING_EMAIL_JOB_DEFINITION } from './definitions/emails/send-sig
 import { SEND_TEAM_DELETED_EMAIL_JOB_DEFINITION } from './definitions/emails/send-team-deleted-email';
 import { ADMIN_DELETE_ORGANISATION_JOB_DEFINITION } from './definitions/internal/admin-delete-organisation';
 import { ALERT_ORGANISATION_SEAT_DRIFT_JOB_DEFINITION } from './definitions/internal/alert-organisation-seat-drift';
+import { ANCHOR_ENVELOPE_ONCHAIN_JOB_DEFINITION } from './definitions/internal/anchor-envelope-onchain';
 import { BACKPORT_SUBSCRIPTION_CLAIM_JOB_DEFINITION } from './definitions/internal/backport-subscription-claims';
 import { BULK_SEND_TEMPLATE_JOB_DEFINITION } from './definitions/internal/bulk-send-template';
 import { CANCEL_ORGANISATION_SUBSCRIPTION_JOB_DEFINITION } from './definitions/internal/cancel-organisation-subscription';
@@ -28,6 +29,7 @@ import { PROCESS_DOS_WEBHOOK_JOB_DEFINITION } from './definitions/internal/proce
 import { PUBLISH_DOS_EVENT_JOB_DEFINITION } from './definitions/internal/publish-dos-event';
 import { PROCESS_RECIPIENT_EXPIRED_JOB_DEFINITION } from './definitions/internal/process-recipient-expired';
 import { PROCESS_SIGNING_REMINDER_JOB_DEFINITION } from './definitions/internal/process-signing-reminder';
+import { RECONCILE_BLOCKCHAIN_ANCHORS_JOB_DEFINITION } from './definitions/internal/reconcile-blockchain-anchors';
 import { SEAL_DOCUMENT_JOB_DEFINITION } from './definitions/internal/seal-document';
 import { SEAL_DOCUMENT_SWEEP_JOB_DEFINITION } from './definitions/internal/seal-document-sweep';
 import { SEND_SIGNING_REMINDERS_SWEEP_JOB_DEFINITION } from './definitions/internal/send-signing-reminders-sweep';
@@ -58,6 +60,7 @@ export const jobsClient = new JobClient([
   SEND_DOCUMENT_CREATED_FROM_DIRECT_TEMPLATE_EMAIL_JOB_DEFINITION,
   SEND_DOCUMENT_PENDING_EMAIL_JOB_DEFINITION,
   SEND_OWNER_RECIPIENT_EXPIRED_EMAIL_JOB_DEFINITION,
+  ANCHOR_ENVELOPE_ONCHAIN_JOB_DEFINITION,
   BACKPORT_SUBSCRIPTION_CLAIM_JOB_DEFINITION,
   BULK_SEND_TEMPLATE_JOB_DEFINITION,
   EXECUTE_WEBHOOK_JOB_DEFINITION,
@@ -67,6 +70,7 @@ export const jobsClient = new JobClient([
   PROCESS_RECIPIENT_EXPIRED_JOB_DEFINITION,
   SEND_SIGNING_REMINDERS_SWEEP_JOB_DEFINITION,
   PROCESS_SIGNING_REMINDER_JOB_DEFINITION,
+  RECONCILE_BLOCKCHAIN_ANCHORS_JOB_DEFINITION,
   CLEANUP_RATE_LIMITS_JOB_DEFINITION,
   SYNC_EMAIL_DOMAINS_JOB_DEFINITION,
   ADMIN_DELETE_ORGANISATION_JOB_DEFINITION,
