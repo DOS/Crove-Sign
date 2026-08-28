@@ -194,7 +194,59 @@ When AI Agents (e.g. Crove Desk AI, DOSClaw) require contextual information or s
 
 ---
 
-## 6. Multi-Language Localization (i18n & Vietnamese Support)
+## 6. Blockchain Integrity Receipt Architecture (EAS on DOS Chain & Multi-Chain EVM)
+
+### 6.1. Legal & Functional Positioning
+- **Not a Legal Electronic Signature / Timestamp**: In compliance with the Law on Electronic Transactions (20/2023/QH15) and Decree 23/2025/ND-CP, timestamping is a conditionally licensed trust service. Blockchain anchors do not claim legal equivalence to qualified timestamp providers (TSP).
+- **Core Positioning**: A **Tamper-Evident Blockchain Integrity Receipt** providing decentralized mathematical proof that an exact file existed in an immutable state no later than a specific block height. Legal signatures remain handled by PAdES/TSP X.509 certificates (`finalize-tsp-completion.ts`).
+
+### 6.2. Existing DOS Chain Infrastructure (EVM Standard)
+Crove Sign utilizes the official Ethereum Attestation Service (EAS) contracts already deployed on DOS Chain:
+- **EAS Core**: `0x79799066b2b5072E4B154Bedde14Dbc22caa0EA5`
+- **SchemaRegistry**: `0x7979E91c465d3dde4faA7a6601b5b2c1C66c9999`
+- **EIP712Proxy & Indexer**: Pre-deployed and verified.
+
+### 6.3. Privacy-Preserving Multi-PDF Schema Specification
+To eliminate privacy leakage (avoiding public titles, names, signer counts, internal IDs) and natively support multi-PDF Envelopes (`EnvelopeItem[]`), the attestation schema registers per-document hashes using canonical SHA-256:
+
+```solidity
+bytes32 anchorId,
+bytes32 documentHash,
+bytes32 auditRoot,
+uint16 itemIndex,
+uint16 itemCount,
+uint16 formatVersion
+```
+
+- `anchorId`: Random UUID/bytes32 generated prior to job execution (decoupled from internal `envelopeId`).
+- `documentHash`: Standard SHA-256 hash of the sealed PDF file (supported natively by Web Crypto in all modern browsers).
+- `auditRoot`: SHA-256 hash of the canonical JSON audit trail serialized via **RFC 8785 (JCS)**.
+- `itemIndex` & `itemCount`: Indexing for multi-item document bundles in a single `multiAttest` transaction.
+
+### 6.4. Elimination of Self-Referencing QR Loop
+- Sealed PDFs embed a **Stable Verification URL** (`https://sign.crove.com/verify/:qrToken`) generated before document decoration.
+- The sealed PDF is finalized and hashed once. After the asynchronous anchor job completes, navigating to the verification URL queries the attestation record, block height, and transaction hash dynamically without modifying the immutable sealed PDF.
+
+### 6.5. Reverse Lookup & Dedicated Crove Resolver
+Because EAS Core queries strictly by `UID`, a dedicated `CroveAttestationResolver.sol` on DOS Chain maintains an on-chain reverse mapping:
+```solidity
+mapping(bytes32 => bytes32[]) public documentHashToUIDs;
+```
+This enables zero-login, browser-based drag & drop document verification by querying the smart contract directly via RPC.
+
+### 6.6. Transactional Outbox Pattern & Worker Reliability
+- Outbox entries are committed atomically in PostgreSQL (`sign.BlockchainAnchor`) alongside document completion.
+- A background BullMQ queue processes records: `PENDING -> SUBMITTED -> CONFIRMED`.
+- A dedicated **Crove Signer Wallet** (isolated with gas limits and periodic key rotation) manages nonces via an in-memory coordinator to prevent transaction replacement errors.
+
+### 6.7. Multi-Chain Portability & Migration (Base, Arbitrum, Optimism, Sign Protocol)
+Because the architecture strictly implements standard EAS (EIP-712 and EVM bytecode):
+- **Zero Lock-in**: Crove Sign can simultaneously attest or migrate to Ethereum L2s (Base, Arbitrum, Optimism, Polygon) by adjusting the RPC URL and contract addresses in configuration.
+- **Cross-Chain Attestation**: Compatible with Sign Protocol & Arweave storage layers if global decentralized replication is required.
+
+---
+
+## 7. Multi-Language Localization (i18n & Vietnamese Support)
 
 Crove Sign supports internationalization via LinguiJS:
 - **Supported Languages**: English (`en`), German (`de`), French (`fr`), Spanish (`es`), Italian (`it`), Dutch (`nl`), Polish (`pl`), Portuguese (`pt-BR`), Japanese (`ja`), Korean (`ko`), Chinese (`zh`), and **Vietnamese (`vi`)**.
