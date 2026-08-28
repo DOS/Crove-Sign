@@ -4,24 +4,6 @@ All notable architectural, infrastructure, database, identity, and feature chang
 
 ---
 
-## [2026-08-28] - Decentralized EAS & Blockchain Document Attestation (DOS Chain)
-
-### 1. Ethereum Attestation Service (EAS) & Sign Protocol Attestation Engine
-- **Decentralized Schema & Hash Engine (`packages/lib/server-only/blockchain/`)**:
-  - Implemented `attestCompletedDocument` and `computeDocumentHashes` (SHA-256 and EVM Keccak-256) following the EAS & Sign Protocol standard.
-  - Generates verifiable off-chain attestation packages (EIP-712 / HMAC signed) with deterministic Schema UIDs.
-  - Automatically records on-chain attestation audit entries in `DocumentAuditLog`.
-- **Automated Sealing Integration**:
-  - Attached background attestation trigger directly inside `seal-document.handler.ts` on document completion.
-- **Public Verification API (`/api/v1/attestation`)**:
-  - `GET /api/v1/attestation/:envelopeId`: Retrieves the verifiable attestation package.
-  - `POST /api/v1/attestation/verify`: Public binary & multipart endpoint allowing zero-login PDF integrity verification (`VALID | TAMPERED | NOT_FOUND`).
-- **Unit & E2E Test Suite**:
-  - `packages/lib/server-only/blockchain/attest-document.test.ts`: Cryptographic hashing and deterministic UID tests.
-  - `packages/app-tests/e2e/blockchain/attestation-api.spec.ts`: E2E verification endpoint tests.
-
----
-
 ## [2026-08-27] - Automated Upstream Release Sync & Container Build Pipeline
 
 ### 1. Upstream Sync Workflow (`.github/workflows/sync-upstream.yml`)
