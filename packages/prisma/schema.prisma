@@ -458,6 +458,7 @@ model Envelope {
   fields        Field[]
   shareLinks    DocumentShareLink[]
   auditLogs     DocumentAuditLog[]
+  blockchainAnchors BlockchainAnchor[]
 
   // Envelope settings
   authOptions Json? /// [DocumentAuthOptions] @zod.custom.use(ZDocumentAuthOptionsSchema)
@@ -530,6 +531,46 @@ model DocumentAuditLog {
   envelope Envelope? @relation(fields: [envelopeId], references: [id], onDelete: SetNull)
 
   @@index([envelopeId])
+}
+
+enum BlockchainAnchorStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  RETRYABLE_FAILED
+  PERMANENT_FAILED
+}
+
+model BlockchainAnchor {
+  id                   String                 @id @default(cuid())
+  envelopeId           String
+  anchorKey            String                 @unique
+  envelopeHash         String
+  artifactRoot         String
+  auditBundleRoot      String
+  identityEvidenceRoot String?
+  riskEvidenceRoot     String?
+  policyHash           String?
+  evidenceVersion      Int                    @default(1)
+  eventType            Int                    @default(1)
+
+  status               BlockchainAnchorStatus @default(PENDING)
+  attempts             Int                    @default(0)
+  lastError            String?
+  txHash               String?
+  blockNumber          Int?
+  attestationUid       String?
+
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  anchoredAt           DateTime?
+
+  envelope             Envelope               @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([envelopeId])
+  @@index([artifactRoot])
+  @@index([envelopeHash])
 }
 
 enum DocumentDataType {

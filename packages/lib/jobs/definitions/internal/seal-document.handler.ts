@@ -22,6 +22,11 @@ import { insertFieldInPDFV2 } from '../../../server-only/pdf/insert-field-in-pdf
 import { legacy_insertFieldInPDF } from '../../../server-only/pdf/legacy-insert-field-in-pdf';
 import { getTeamSettings } from '../../../server-only/team/get-team-settings';
 import { triggerWebhook } from '../../../server-only/webhooks/trigger/trigger-webhook';
+import {
+  computeMerkleRoot,
+  hashBytes32,
+  hashCanonicalJson,
+} from '../../../server-only/blockchain/canonical-json';
 import { DOCUMENT_AUDIT_LOG_TYPE, type TDocumentAuditLog } from '../../../types/document-audit-logs';
 import { isTspEnvelope } from '../../../types/signature-level';
 import { mapEnvelopeToWebhookDocumentPayload, ZWebhookDocumentSchema } from '../../../types/webhook-payload';
@@ -314,6 +319,34 @@ export const run = async ({ payload, io }: { payload: TSealDocumentJobDefinition
       await tx.documentAuditLog.create({
         data: envelopeCompletedAuditLog,
       });
+
+      // Transactional Outbox: Insert blockchain anchor task in the same atomic transaction
+      if (!isRejected) {
+        const itemHashes = decoratedPdfs.map((p) => hashBytes32(p.pdfData));
+        const artifactRoot = computeMerkleRoot(itemHashes);
+        const envelopeHash = hashCanonicalJson({ domain: 'CroveSign:Envelope', id: envelope.id });
+        const auditBundleRoot = hashCanonicalJson(envelopeCompletedAuditLog);
+        const anchorKey = hashCanonicalJson({ envelopeId: envelope.id, eventType: 1, artifactRoot });
+
+        await tx.blockchainAnchor.upsert({
+          where: { anchorKey },
+          create: {
+            envelopeId: envelope.id,
+            anchorKey,
+            envelopeHash,
+            artifactRoot,
+            auditBundleRoot,
+            evidenceVersion: 1,
+            eventType: 1,
+            status: 'PENDING',
+          },
+          update: {
+            artifactRoot,
+            auditBundleRoot,
+            updatedAt: new Date(),
+          },
+        });
+      }
     });
 
     return {
@@ -339,6 +372,18 @@ export const run = async ({ payload, io }: { payload: TSealDocumentJobDefinition
     userId: updatedEnvelope.userId,
     teamId: updatedEnvelope.teamId ?? undefined,
   });
+
+  // Trigger on-chain anchor worker asynchronously after successful commit
+  if (!isRejected) {
+    void jobs.triggerJob({
+      name: 'internal.anchor-envelope-onchain',
+      payload: {
+        envelopeId,
+      },
+    }).catch((err) => {
+      console.warn(`[Blockchain Anchor] Failed to enqueue anchor job for envelope ${envelopeId}:`, err);
+    });
+  }
 
   let shouldSendCompletedEmail = sendEmail && !isResealing && !isRejected;
 
