@@ -1,4 +1,4 @@
-name: Sync Upstream Documenso Release & Auto Build
+name: Sync Upstream Documenso Release & Deploy Beta
 
 on:
   schedule:
@@ -22,20 +22,20 @@ permissions:
 
 jobs:
   check-and-sync-upstream:
-    name: Check, Merge Upstream Release & Apply Brand Patch
+    name: Check, Merge Upstream Release into Dev & Deploy Beta
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     outputs:
       synced: ${{ steps.sync.outputs.synced }}
       version_tag: ${{ steps.sync.outputs.version_tag }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (dev branch)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
+          ref: dev
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
@@ -45,8 +45,8 @@ jobs:
 
       - name: Configure Git Identity
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "JOY"
+          git config user.email "5027251+JOY@users.noreply.github.com"
 
       - name: Detect and Sync Upstream Release
         id: sync
@@ -79,17 +79,18 @@ jobs:
             exit 1
           fi
 
-          # 2. Check if tag already exists in Crove-Sign
-          TAG_EXISTS=$(git tag -l "$TARGET_TAG")
+          # 2. Check if beta release tag already exists in Crove-Sign
+          BETA_TAG="${TARGET_TAG}-beta"
+          TAG_EXISTS=$(git tag -l "$BETA_TAG")
           if [ -n "$TAG_EXISTS" ] && [ "$FORCE_SYNC" != "true" ]; then
-            echo "✅ Release $TARGET_TAG is already synchronized in Crove-Sign. Skipping."
+            echo "✅ Beta Release $BETA_TAG is already synchronized in Crove-Sign. Skipping."
             echo "synced=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "🔀 Fetching and merging upstream tag $TARGET_TAG..."
+          echo "🔀 Fetching and merging upstream tag $TARGET_TAG into dev..."
           git fetch upstream tag "$TARGET_TAG" --no-tags
-          git merge "$TARGET_TAG" --no-edit -m "chore(sync): merge upstream Documenso release $TARGET_TAG"
+          git merge "$TARGET_TAG" --no-edit -m "chore(sync): merge upstream Documenso release $TARGET_TAG into dev"
 
           echo "🎨 Applying Crove Sign Enterprise Branding Patch..."
           node scripts/patch-crove-branding.mjs
@@ -101,17 +102,22 @@ jobs:
             git commit --no-trailer -m "chore(branding): apply Crove Sign enterprise branding patch for $TARGET_TAG"
           fi
 
-          # 4. Create Release Tag & Push
-          echo "🏷️ Creating release tag $TARGET_TAG..."
-          git tag -fa "$TARGET_TAG" -m "Release $TARGET_TAG - Crove Sign"
-          git push origin main --tags --force
+          # 4. Push to dev branch (Main remains untouched until manual promotion)
+          echo "📤 Pushing merged updates to dev branch..."
+          git push origin dev
 
-          # 5. Create GitHub Release
-          echo "📦 Creating GitHub Release for $TARGET_TAG..."
-          gh release create "$TARGET_TAG" \
-            --title "Crove Sign $TARGET_TAG" \
-            --notes "Automated release synchronized with upstream Documenso $TARGET_TAG. Includes Crove Sign Enterprise Branding, Multi-language (Vietnamese) support, Hybrid Org Sync, and OIDC Authentication." || true
+          # 5. Create Beta Release Tag & Push
+          echo "🏷️ Creating beta release tag $BETA_TAG..."
+          git tag -fa "$BETA_TAG" -m "Beta Release $BETA_TAG - Crove Sign"
+          git push origin "$BETA_TAG" --force
+
+          # 6. Create Pre-release on GitHub
+          echo "📦 Creating GitHub Pre-Release for $BETA_TAG..."
+          gh release create "$BETA_TAG" \
+            --title "Crove Sign $BETA_TAG" \
+            --prerelease \
+            --notes "Automated beta release synchronized from upstream Documenso $TARGET_TAG. Includes Crove Sign Enterprise Branding, Multi-language (Vietnamese) support, Hybrid Org Sync, and OIDC Authentication. Ready for Beta deployment." || true
 
           echo "synced=true" >> "$GITHUB_OUTPUT"
-          echo "version_tag=$TARGET_TAG" >> "$GITHUB_OUTPUT"
-          echo "🎉 Successfully synchronized release $TARGET_TAG!"
+          echo "version_tag=$BETA_TAG" >> "$GITHUB_OUTPUT"
+          echo "🎉 Successfully synchronized release $TARGET_TAG to Beta!"
