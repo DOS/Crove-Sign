@@ -7,7 +7,6 @@ import {
   AlertCircleIcon,
   CheckCircle2Icon,
   CopyIcon,
-  FileCheckIcon,
   FileTextIcon,
   Loader2Icon,
   ShieldCheckIcon,
@@ -17,7 +16,6 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { appMetaTags } from '~/utils/meta';
-import type { Route } from './+types/verify._index';
 
 export function meta() {
   return appMetaTags(msg`Verify Document - Blockchain Integrity Receipt`);

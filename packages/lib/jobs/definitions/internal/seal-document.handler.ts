@@ -322,7 +322,7 @@ export const run = async ({ payload, io }: { payload: TSealDocumentJobDefinition
 
       // Transactional Outbox: Insert blockchain anchor task in the same atomic transaction
       if (!isRejected) {
-        const itemHashes = decoratedPdfs.map((p) => hashBytes32(p.pdfData));
+        const itemHashes = newDocumentData.map((p) => p.pdfDataHash);
         const artifactRoot = computeMerkleRoot(itemHashes);
         const envelopeHash = hashCanonicalJson({ domain: 'CroveSign:Envelope', id: envelope.id });
         const auditBundleRoot = hashCanonicalJson(envelopeCompletedAuditLog);
@@ -552,5 +552,6 @@ const decorateAndSignPdf = async ({
   return {
     oldDocumentDataId: envelopeItem.documentData.id,
     newDocumentDataId: newDocumentData.id,
+    pdfDataHash: hashBytes32(pdfBytes),
   };
 };
