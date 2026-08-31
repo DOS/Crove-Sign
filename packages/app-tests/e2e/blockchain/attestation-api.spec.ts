@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test.describe('[Blockchain Attestation & Verification Portal]: /verify & /api/v1/attestation', () => {
-  test('should render /verify page with upload dropzone', async ({ page }) => {
-    await page.goto('/verify');
+test.describe('[Blockchain Attestation & Verification Portal]: /articles/verify-document & /api/v1/attestation', () => {
+  test('should render /articles/verify-document page with upload dropzone', async ({ page }) => {
+    await page.goto('/articles/verify-document');
 
     await expect(page).toHaveTitle(/Verify Document/);
     await expect(page.getByText('Document Integrity Verification')).toBeVisible();
