@@ -93,7 +93,7 @@ export default function DocumentVerificationPage() {
   };
 
   return (
-    <div className="w-full max-w-4xl px-4 py-8">
+    <div className="w-screen max-w-3xl px-4 py-8">
       <div className="mb-8 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <ShieldCheckIcon className="h-8 w-8 text-emerald-500" />
