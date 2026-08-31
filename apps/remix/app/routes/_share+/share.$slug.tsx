@@ -1,20 +1,13 @@
-import { NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
-import { getDocumentByAccessToken } from '@documenso/lib/server-only/document/get-document-by-access-token';
 import { redirect, useLoaderData } from 'react-router';
 
+import { NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
+import { getDocumentByAccessToken } from '@documenso/lib/server-only/document/get-document-by-access-token';
+
 import { DocumentCertificateQRView } from '~/components/general/document/document-certificate-qr-view';
-import ShareVerifyPage from './share.verify';
 
 import type { Route } from './+types/share.$slug';
 
 export function meta({ params: { slug } }: Route.MetaArgs) {
-  if (slug === 'verify') {
-    return [
-      { title: 'Verify Document - Blockchain Integrity Receipt' },
-      { description: 'Verify tamper-evident document integrity on DOS Chain / EAS' },
-    ];
-  }
-
   if (slug.startsWith('qr_')) {
     return undefined;
   }
@@ -58,10 +51,6 @@ export function meta({ params: { slug } }: Route.MetaArgs) {
 }
 
 export const loader = async ({ request, params: { slug } }: Route.LoaderArgs) => {
-  if (slug === 'verify') {
-    return {};
-  }
-
   if (slug.startsWith('qr_')) {
     const document = await getDocumentByAccessToken({ token: slug });
 
@@ -103,5 +92,5 @@ export default function SharePage() {
     );
   }
 
-  return <ShareVerifyPage />;
+  return <div></div>;
 }
