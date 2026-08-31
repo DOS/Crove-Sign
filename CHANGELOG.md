@@ -4,6 +4,22 @@ All notable architectural, infrastructure, database, identity, and feature chang
 
 ---
 
+## [2026-08-31] - EAS Benchmark Suite, Outbox State Machine Tests & DOS Chain Infrastructure
+
+### 1. Attestation & Gas Benchmark Suite (`scripts/benchmark-doschain-attestation.mjs`)
+- **RFC 8785 Canonical JSON Benchmark**: Achieves over 160,000 ops/sec deterministic canonical hashing.
+- **Multi-PDF Merkle Tree Computation**: Sub-millisecond Merkle root computation (~50 µs for 50 PDF items).
+- **EVM Gas Estimation**: ~73k gas for single document attestation and ~40k gas per document in 5-item `multiAttest` batch (45% gas savings).
+- **DOS Chain Node RPC Probing**: Automatic latency and block height verification on DOS Chain Testnet and Mainnet.
+
+### 2. Outbox Worker & Idempotency Simulation Test Suite
+- Implemented `packages/lib/server-only/blockchain/outbox-worker.test.ts` verifying:
+  - Strict anti-replay idempotency on duplicate queue invocations.
+  - Outbox state machine transitions: `PENDING -> SUBMITTED -> CONFIRMED`.
+  - Crash recovery & exponential retry for `RETRYABLE_FAILED` and terminal `PERMANENT_FAILED` states.
+
+---
+
 ## [2026-08-28] - Smart Contract CroveAttestationResolver & EAS Interface
 
 ### 1. Smart Contract Implementation (`contracts/CroveAttestationResolver.sol`)
