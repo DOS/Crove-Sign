@@ -21,7 +21,7 @@ export function meta() {
   return appMetaTags(msg`Verify Document - Blockchain Integrity Receipt`);
 }
 
-export default function VerifyDocumentPage() {
+export default function ShareVerifyPage() {
   const { _ } = useLingui();
 
   const [isDragging, setIsDragging] = useState(false);
