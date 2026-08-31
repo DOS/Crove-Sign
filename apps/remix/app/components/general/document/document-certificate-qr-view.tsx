@@ -17,7 +17,7 @@ import {
 } from '@documenso/ui/primitives/dialog';
 import { Trans } from '@lingui/react/macro';
 import { type DocumentData, DocumentStatus, type EnvelopeItem, EnvelopeType } from '@prisma/client';
-import { DownloadIcon } from 'lucide-react';
+import { DownloadIcon, ShieldCheckIcon } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useEffect, useState } from 'react';
 
@@ -131,6 +131,18 @@ export const DocumentCertificateQRView = ({
               </div>
             </div>
 
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className="w-fit">
+              <a
+                href={`/articles/verify-document?token=${encodeURIComponent(token)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ShieldCheckIcon className="mr-2 h-5 w-5 text-emerald-500" />
+                <Trans>Verify on Blockchain</Trans>
+              </a>
+            </Button>
+
             <EnvelopeDownloadDialog
               envelopeId={envelopeItems[0].envelopeId}
               envelopeStatus={DocumentStatus.COMPLETED}
@@ -143,6 +155,7 @@ export const DocumentCertificateQRView = ({
                 </Button>
               }
             />
+          </div>
           </div>
 
           <div className="mt-12 w-full">
@@ -191,18 +204,31 @@ const DocumentCertificateQrV2 = ({ title, recipientCount, formattedDate, token }
           </div>
         </div>
 
-        <EnvelopeDownloadDialog
-          envelopeId={envelopeItems[0].envelopeId}
-          envelopeStatus={DocumentStatus.COMPLETED}
-          envelopeItems={envelopeItems}
-          token={token}
-          trigger={
-            <Button type="button" variant="outline" className="w-fit">
-              <DownloadIcon className="mr-2 h-5 w-5" />
-              <Trans>Download</Trans>
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" className="w-fit">
+            <a
+              href={`/articles/verify-document?token=${encodeURIComponent(token)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ShieldCheckIcon className="mr-2 h-5 w-5 text-emerald-500" />
+              <Trans>Verify on Blockchain</Trans>
+            </a>
+          </Button>
+
+          <EnvelopeDownloadDialog
+            envelopeId={envelopeItems[0].envelopeId}
+            envelopeStatus={DocumentStatus.COMPLETED}
+            envelopeItems={envelopeItems}
+            token={token}
+            trigger={
+              <Button type="button" variant="outline" className="w-fit">
+                <DownloadIcon className="mr-2 h-5 w-5" />
+                <Trans>Download</Trans>
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <div className="mt-12 w-full">
