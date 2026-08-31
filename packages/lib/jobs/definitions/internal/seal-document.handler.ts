@@ -213,7 +213,7 @@ export const run = async ({ payload, io }: { payload: TSealDocumentJobDefinition
     const needsCertificate = settings.includeSigningCertificate;
     const needsAuditLog = settings.includeAuditLog;
 
-    const newDocumentData: Array<{ oldDocumentDataId: string; newDocumentDataId: string }> = [];
+    const newDocumentData: Array<{ oldDocumentDataId: string; newDocumentDataId: string; pdfDataHash: string }> = [];
 
     for (const { envelopeItem, pdfData } of prefetchedItems) {
       const envelopeItemFields = envelope.envelopeItems.find((item) => item.id === envelopeItem.id)?.field;
