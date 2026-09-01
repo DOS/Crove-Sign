@@ -22,6 +22,7 @@ import { insertFieldInPDFV2 } from '../../../server-only/pdf/insert-field-in-pdf
 import { legacy_insertFieldInPDF } from '../../../server-only/pdf/legacy-insert-field-in-pdf';
 import { getTeamSettings } from '../../../server-only/team/get-team-settings';
 import { triggerWebhook } from '../../../server-only/webhooks/trigger/trigger-webhook';
+import { dispatchContractCompletedToCrm } from '../../../server-only/dos-id/crm-event-mapper';
 import {
   computeMerkleRoot,
   hashBytes32,
@@ -372,6 +373,27 @@ export const run = async ({ payload, io }: { payload: TSealDocumentJobDefinition
     userId: updatedEnvelope.userId,
     teamId: updatedEnvelope.teamId ?? undefined,
   });
+
+  // Dispatch detailed contract completion event to Twenty CRM and Crove Desk
+  if (!isRejected) {
+    void dispatchContractCompletedToCrm({
+      envelopeId,
+      documentId,
+      title: updatedEnvelope.title,
+      userId: updatedEnvelope.userId,
+      teamId: updatedEnvelope.teamId ?? undefined,
+      qrToken: updatedEnvelope.qrToken,
+      recipients: updatedEnvelope.recipients.map((r) => ({
+        email: r.email,
+        name: r.name,
+        role: r.role,
+        signingStatus: r.signingStatus,
+        signedAt: r.signedAt,
+      })),
+    }).catch((err) => {
+      console.warn(`[CRM Event Mapper] Failed to dispatch contract completed event:`, err);
+    });
+  }
 
   // Trigger on-chain anchor worker asynchronously after successful commit
   if (!isRejected) {
