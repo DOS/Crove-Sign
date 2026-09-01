@@ -20,13 +20,13 @@ export const createAdminOrganisationRoute = adminProcedure
       },
     });
 
-    const freeSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.FREE);
+    const enterpriseSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.ENTERPRISE);
 
     const organisation = await createOrganisation({
       userId: ownerUserId,
       name: data.name,
       type: OrganisationType.ORGANISATION,
-      claim: freeSubscriptionClaim,
+      claim: enterpriseSubscriptionClaim,
     });
 
     return {

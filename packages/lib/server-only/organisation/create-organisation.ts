@@ -151,14 +151,14 @@ export const createPersonalOrganisation = async ({
   inheritMembers = true,
   type = OrganisationType.PERSONAL,
 }: CreatePersonalOrganisationOptions) => {
-  const freeSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.FREE);
+  const enterpriseSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.ENTERPRISE);
 
   const organisation = await createOrganisation({
     name: 'Personal Organisation',
     userId,
     url: orgUrl,
     type,
-    claim: freeSubscriptionClaim,
+    claim: enterpriseSubscriptionClaim,
   }).catch((err) => {
     console.error(err);
 

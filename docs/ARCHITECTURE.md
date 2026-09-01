@@ -299,13 +299,18 @@ NEXT_PRIVATE_INTERNAL_WEBAPP_URL="http://localhost:3000"
 NEXT_PRIVATE_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?schema=sign&sslmode=no-verify&pgbouncer=true&connection_limit=5&options=-csearch_path%3Dsign,public"
 NEXT_PRIVATE_DIRECT_DATABASE_URL="postgresql://postgres.gulptwduchsjcsbndmua:<DB_PASSWORD>@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?schema=sign&sslmode=no-verify"
 
-# Storage & Mail
+# Storage, Document Upload & Mail
 NEXT_PUBLIC_UPLOAD_TRANSPORT="database"
+NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT=100
 NEXT_PRIVATE_SMTP_TRANSPORT="smtp-auth"
 NEXT_PRIVATE_SMTP_HOST="127.0.0.1"
 NEXT_PRIVATE_SMTP_PORT=25
 NEXT_PRIVATE_SMTP_FROM_NAME="Crove Sign"
 NEXT_PRIVATE_SMTP_FROM_ADDRESS="noreply@crove.com"
+
+# Timestamp Authority & Signature Standards (RFC 3161 PAdES LTV)
+NEXT_PRIVATE_SIGNING_TIMESTAMP_AUTHORITY="http://timestamp.digicert.com"
+NEXT_PRIVATE_USE_LEGACY_SIGNING_SUBFILTER=false
 
 # DOS.Me OIDC SSO
 NEXT_PRIVATE_OIDC_WELL_KNOWN="https://gulptwduchsjcsbndmua.supabase.co/auth/v1/.well-known/openid-configuration"
@@ -318,7 +323,8 @@ NEXT_PRIVATE_OIDC_PROMPT="consent"
 # Ecosystem Webhooks & Queues
 CROVE_DOS_WEBHOOK_SECRET="<WEBHOOK_SECRET>"
 NEXT_PRIVATE_JOBS_PROVIDER="bullmq"
-NEXT_PRIVATE_REDIS_URL="redis://127.0.0.1:6379"
+NEXT_PRIVATE_REDIS_URL="redis://crove-redis:6379"
+NEXT_PRIVATE_REDIS_PREFIX="crove_sign"
 
 # SSO-First Access Controls
 NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNUP=true
