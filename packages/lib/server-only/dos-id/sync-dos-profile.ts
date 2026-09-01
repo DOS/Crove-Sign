@@ -156,8 +156,8 @@ export const syncOrganisationForUser = async ({
     return existingOrg;
   }
 
-  // Create new organization with enterprise claim
-  const enterpriseSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.ENTERPRISE);
+  // Create new organization with free claim
+  const freeSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.FREE);
 
   const newOrg = await prisma.$transaction(async (tx) => {
     const organisationSetting = await tx.organisationGlobalSettings.create({
@@ -171,8 +171,8 @@ export const syncOrganisationForUser = async ({
     const organisationClaim = await tx.organisationClaim.create({
       data: {
         id: generateDatabaseId('org_claim'),
-        originalSubscriptionClaimId: enterpriseSubscriptionClaim.id,
-        ...createOrganisationClaimUpsertData(enterpriseSubscriptionClaim),
+        originalSubscriptionClaimId: freeSubscriptionClaim.id,
+        ...createOrganisationClaimUpsertData(freeSubscriptionClaim),
       },
     });
 
