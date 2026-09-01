@@ -4,20 +4,6 @@ All notable architectural, infrastructure, database, identity, and feature chang
 
 ---
 
-## [2026-09-01] - Enterprise Features Unlocked & RFC 3161 PAdES LTV Timestamping
-
-### 1. Full Enterprise Capabilities & Claims Unlocked
-- **Universal Enterprise Subscription Claims (`migration.sql`)**:
-  - Unlocked all enterprise feature flags (`allowCustomBranding`, `hidePoweredBy`, `unlimitedDocuments`, `emailDomains`, `embedAuthoring`, `embedAuthoringWhiteLabel`, `embedSigning`, `embedSigningWhiteLabel`, `cfr21`, `hipaa`, `authenticationPortal`, `signingReminders`, `cscQesSigning`) across default subscription claims.
-  - Set `teamCount = 0` (unlimited teams/workspaces) and `memberCount = 0` (unlimited seats) with up to 100 attachments and 100 recipients per envelope.
-  - Updated JIT provisioning (`sync-dos-profile.ts`, `create-dos-organisation.ts`, `create-organisation.ts`) to default new organizations to Enterprise tier.
-- **RFC 3161 Timestamp Authority (TSA) & PAdES LTV**:
-  - Configured `NEXT_PRIVATE_SIGNING_TIMESTAMP_AUTHORITY="http://timestamp.digicert.com"` for cryptographic timestamp embedding and Adobe Acrobat Long-Term Validation (LTV).
-  - Enforced modern ETSI CAdES/PAdES detached signature standard (`NEXT_PRIVATE_USE_LEGACY_SIGNING_SUBFILTER=false`).
-  - Raised default document upload limit to 100MB (`NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT=100`).
-
----
-
 ## [2026-08-31] - EAS Benchmark Suite, Outbox State Machine Tests & DOS Chain Infrastructure
 
 ### 1. Attestation & Gas Benchmark Suite (`scripts/benchmark-doschain-attestation.mjs`)

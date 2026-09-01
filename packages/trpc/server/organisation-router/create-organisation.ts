@@ -71,13 +71,13 @@ export const createOrganisationRoute = authenticatedProcedure
         });
       }
 
-      const enterpriseSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.ENTERPRISE);
+      const freeSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.FREE);
 
       const organisation = await createOrganisation({
         userId: user.id,
         name,
         type: OrganisationType.ORGANISATION,
-        claim: enterpriseSubscriptionClaim,
+        claim: freeSubscriptionClaim,
       });
 
       let customerId = organisation.customerId;

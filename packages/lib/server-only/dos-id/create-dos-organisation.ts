@@ -82,14 +82,14 @@ export const createDosOrganisation = async ({
     }
   }
 
-  // Fallback: create organization directly in sign schema with enterprise claim
-  const enterpriseSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.ENTERPRISE);
+  // Fallback: create organization directly in sign schema
+  const freeSubscriptionClaim = await getSubscriptionClaim(INTERNAL_CLAIM_ID.FREE);
 
   return await createOrganisation({
     userId,
     name,
     type: OrganisationType.ORGANISATION,
     url: rawSlug,
-    claim: enterpriseSubscriptionClaim,
+    claim: freeSubscriptionClaim,
   });
 };
