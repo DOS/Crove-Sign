@@ -77,4 +77,5 @@ Translations
 Response Guidelines:
 
 - Không lặp lại hay trả lời lại các câu hỏi hoặc vấn đề đã được giải đáp rõ ở các lượt trao đổi trước đó. Tập trung thẳng vào hành động và kết quả kỹ thuật của task hiện tại.
+- Tuyệt đối không dùng cú pháp LaTeX math như `$\rightarrow$` trong văn bản thông thường; luôn dùng ký tự mũi tên thuần unicode `→` hoặc `->`.
 
