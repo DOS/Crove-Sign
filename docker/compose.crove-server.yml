@@ -1,19 +1,45 @@
 name: crove-sign
 
 services:
+  crove-gotenberg:
+    image: gotenberg/gotenberg:8-libreoffice
+    container_name: crove-gotenberg
+    restart: always
+    environment:
+      GOTENBERG_API_BASIC_AUTH_USERNAME: crove
+      GOTENBERG_API_BASIC_AUTH_PASSWORD: crovesignconversion2026
+    command:
+      - gotenberg
+      - --api-enable-basic-auth
+      - --libreoffice-deny-private-ips
+      - --api-timeout=500s
+      - --libreoffice-auto-start
+      - --libreoffice-start-timeout=300s
+      - --pdfengines-disable-routes
+      - --webhook-disable
+    networks:
+      - sign-network
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:3000/health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   crove-sign:
-    image: documenso/documenso:v2.17.0
+    image: ghcr.io/dos/crove-sign:latest
     container_name: crove-sign
     restart: always
     env_file:
       - .env
-    volumes:
-      - ./migrations:/app/packages/prisma/migrations:ro
     ports:
       - "127.0.0.1:4008:3000"
     networks:
-      - default
-      - postiz-network
+      - sign-network
+      - crove_postiz-network
+    depends_on:
+      crove-gotenberg:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))\""]
       interval: 15s
@@ -22,7 +48,7 @@ services:
       start_period: 30s
 
 networks:
-  default:
-  postiz-network:
-    name: postiz-docker-compose_postiz-network
+  sign-network:
+    driver: bridge
+  crove_postiz-network:
     external: true
