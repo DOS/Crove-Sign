@@ -3,9 +3,12 @@ import { OrganisationGroupType } from '@prisma/client';
 
 import { generateDatabaseId } from '../../universal/id';
 import { deleteOrganisation } from '../organisation/delete-organisation';
+import { createTeam } from '../team/create-team';
 import {
   mapDosRoleToOrgRole,
+  mapDosRoleToTeamRole,
   syncOrganisationForUser,
+  syncTeamForUser,
   syncUserAvatarFromUrl,
 } from './sync-dos-profile';
 
@@ -25,6 +28,9 @@ export type DosWebhookPayload = {
   role?: string;
   email?: string;
   display_name?: string;
+  team_id?: string;
+  team_name?: string;
+  team_slug?: string;
   [key: string]: unknown;
 };
 
@@ -39,6 +45,9 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
       return { success: true, message: 'Pong! Webhook endpoint is active and verified.' };
     }
 
+    // ==========================================
+    // ORGANISATION EVENTS
+    // ==========================================
     case 'organization.created':
     case 'org.created': {
       const orgId = (data.org_id || data.id) as string | undefined;
@@ -243,6 +252,228 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
       return { success: true, message: 'Member removed successfully' };
     }
 
+    // ==========================================
+    // TEAM EVENTS (Real-Time Teams Hierarchy Sync)
+    // ==========================================
+    case 'team.created': {
+      const orgId = (data.org_id || data.organisation_id) as string | undefined;
+      const teamId = (data.team_id || data.id) as string | undefined;
+      const teamName = (data.name || data.team_name || data.slug || 'Team') as string;
+      const teamSlug = (data.slug || data.team_slug || teamId) as string;
+
+      if (!orgId) {
+        return { success: false, message: 'Missing org_id in team.created' };
+      }
+
+      const org = await prisma.organisation.findFirst({
+        where: {
+          OR: [{ id: orgId }, { url: orgId }],
+        },
+        select: { id: true, ownerUserId: true },
+      });
+
+      if (!org) {
+        return { success: false, message: `Organisation ${orgId} not found for team.created` };
+      }
+
+      // Check if team already exists
+      const existingTeam = await prisma.team.findFirst({
+        where: {
+          organisationId: org.id,
+          OR: [{ url: teamSlug }, { name: teamName }],
+        },
+      });
+
+      if (existingTeam) {
+        return { success: true, message: 'Team already exists' };
+      }
+
+      await createTeam({
+        userId: org.ownerUserId,
+        teamName,
+        teamUrl: teamSlug,
+        organisationId: org.id,
+        inheritMembers: true,
+      });
+
+      return { success: true, message: 'Team created successfully' };
+    }
+
+    case 'team.updated': {
+      const orgId = (data.org_id || data.organisation_id) as string | undefined;
+      const teamId = (data.team_id || data.id) as string | undefined;
+      const teamSlug = (data.slug || data.team_slug) as string | undefined;
+      const teamName = (data.name || data.team_name) as string | undefined;
+
+      const team = await prisma.team.findFirst({
+        where: {
+          ...(orgId ? { organisation: { OR: [{ id: orgId }, { url: orgId }] } } : {}),
+          OR: [
+            ...(teamId && !isNaN(Number(teamId)) ? [{ id: Number(teamId) }] : []),
+            ...(teamSlug ? [{ url: teamSlug }] : []),
+          ],
+        },
+      });
+
+      if (!team) {
+        return { success: false, message: 'Team not found for update' };
+      }
+
+      await prisma.team.update({
+        where: { id: team.id },
+        data: {
+          ...(teamName ? { name: teamName } : {}),
+          ...(teamSlug ? { url: teamSlug } : {}),
+        },
+      });
+
+      return { success: true, message: 'Team updated successfully' };
+    }
+
+    case 'team.deleted': {
+      const orgId = (data.org_id || data.organisation_id) as string | undefined;
+      const teamId = (data.team_id || data.id) as string | undefined;
+      const teamSlug = (data.slug || data.team_slug) as string | undefined;
+
+      const team = await prisma.team.findFirst({
+        where: {
+          ...(orgId ? { organisation: { OR: [{ id: orgId }, { url: orgId }] } } : {}),
+          OR: [
+            ...(teamId && !isNaN(Number(teamId)) ? [{ id: Number(teamId) }] : []),
+            ...(teamSlug ? [{ url: teamSlug }] : []),
+          ],
+        },
+      });
+
+      if (!team) {
+        return { success: false, message: 'Team not found for deletion' };
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.team.delete({
+          where: { id: team.id },
+        });
+
+        await tx.organisationGroup.deleteMany({
+          where: {
+            organisationId: team.organisationId,
+            type: OrganisationGroupType.INTERNAL_TEAM,
+            teamGroups: { none: {} },
+          },
+        });
+      });
+
+      return { success: true, message: 'Team deleted successfully' };
+    }
+
+    case 'team.member_added':
+    case 'team.member.added': {
+      const orgId = (data.org_id || data.organisation_id) as string | undefined;
+      const teamSlug = (data.slug || data.team_slug || data.team_id || data.id) as string | undefined;
+      const userEmail = (data.user_email || data.email) as string | undefined;
+      const role = (data.role || 'MEMBER') as string;
+
+      if (!userEmail) {
+        return { success: false, message: 'Missing user_email in team.member_added' };
+      }
+
+      let user = await prisma.user.findFirst({
+        where: { email: userEmail.toLowerCase() },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: userEmail.toLowerCase(),
+            name: (data.user_name as string) || userEmail.split('@')[0],
+            emailVerified: new Date(),
+          },
+        });
+      }
+
+      // Resolve target organization
+      const targetOrg = orgId
+        ? await prisma.organisation.findFirst({
+            where: { OR: [{ id: orgId }, { url: orgId }] },
+            select: { id: true },
+          })
+        : await prisma.organisationMember.findFirst({
+            where: { userId: user.id },
+            select: { organisationId: true },
+          });
+
+      if (!targetOrg) {
+        return { success: false, message: 'Target organisation not found' };
+      }
+
+      const finalOrgId = 'id' in targetOrg ? targetOrg.id : targetOrg.organisationId;
+
+      await syncTeamForUser({
+        userId: user.id,
+        team: {
+          slug: teamSlug,
+          name: (data.team_name as string) || teamSlug,
+          role,
+        },
+        organisationId: finalOrgId,
+      });
+
+      return { success: true, message: 'Team member added successfully' };
+    }
+
+    case 'team.member_removed':
+    case 'team.member.removed': {
+      const orgId = (data.org_id || data.organisation_id) as string | undefined;
+      const teamSlug = (data.slug || data.team_slug || data.team_id || data.id) as string | undefined;
+      const userEmail = (data.user_email || data.email) as string | undefined;
+
+      if (!userEmail) {
+        return { success: false, message: 'Missing user_email in team.member_removed' };
+      }
+
+      const user = await prisma.user.findFirst({
+        where: { email: userEmail.toLowerCase() },
+      });
+
+      if (!user) {
+        return { success: true, message: 'User not found, nothing to remove' };
+      }
+
+      const team = await prisma.team.findFirst({
+        where: {
+          ...(orgId ? { organisation: { OR: [{ id: orgId }, { url: orgId }] } } : {}),
+          OR: [
+            ...(teamSlug && !isNaN(Number(teamSlug)) ? [{ id: Number(teamSlug) }] : []),
+            ...(teamSlug ? [{ url: teamSlug }] : []),
+          ],
+        },
+        include: {
+          teamGroups: true,
+        },
+      });
+
+      if (!team) {
+        return { success: true, message: 'Team not found, nothing to remove' };
+      }
+
+      const teamGroupIds = team.teamGroups.map((tg) => tg.organisationGroupId);
+
+      await prisma.organisationGroupMember.deleteMany({
+        where: {
+          groupId: { in: teamGroupIds },
+          organisationMember: {
+            userId: user.id,
+            organisationId: team.organisationId,
+          },
+        },
+      });
+
+      return { success: true, message: 'Team member removed successfully' };
+    }
+
+    // ==========================================
+    // USER EVENTS
+    // ==========================================
     case 'user.updated': {
       const email = (data.email || data.user_email) as string | undefined;
       const displayName = (data.display_name || data.name) as string | undefined;
