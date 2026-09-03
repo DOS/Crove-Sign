@@ -1,6 +1,12 @@
 import { getSubscriptionClaim } from '@documenso/lib/server-only/subscription/get-subscription-claim';
 import { prisma } from '@documenso/prisma';
-import { OrganisationGroupType, OrganisationMemberRole, OrganisationType, Prisma } from '@prisma/client';
+import {
+  OrganisationGroupType,
+  OrganisationMemberRole,
+  OrganisationType,
+  Prisma,
+  TeamMemberRole,
+} from '@prisma/client';
 
 import { ORGANISATION_INTERNAL_GROUPS } from '../../constants/organisations';
 import { INTERNAL_CLAIM_ID } from '../../types/subscription';
@@ -21,12 +27,24 @@ export type DosOrgClaim = {
   owner_email?: string;
 };
 
+export type DosTeamClaim = {
+  id?: string;
+  team_id?: string;
+  org_id?: string;
+  organisation_id?: string;
+  name?: string;
+  slug?: string;
+  role?: string;
+};
+
 export type SyncDosUserOptions = {
   userId: number;
   email: string;
   name?: string | null;
   avatarUrl?: string | null;
   organizations?: DosOrgClaim[];
+  teams?: DosTeamClaim[];
+  activeOrgId?: string;
 };
 
 /**
@@ -96,6 +114,23 @@ export const mapDosRoleToOrgRole = (role?: string): OrganisationMemberRole => {
   }
 
   return OrganisationMemberRole.MEMBER;
+};
+
+/**
+ * Maps DOS ID team role string (LEAD, ADMIN, OWNER, MANAGER, MEMBER) to Documenso TeamMemberRole enum.
+ */
+export const mapDosRoleToTeamRole = (role?: string): TeamMemberRole => {
+  const normalized = (role ?? '').toUpperCase().trim();
+
+  if (normalized === 'LEAD' || normalized === 'ADMIN' || normalized === 'OWNER') {
+    return TeamMemberRole.ADMIN;
+  }
+
+  if (normalized === 'MANAGER') {
+    return TeamMemberRole.MANAGER;
+  }
+
+  return TeamMemberRole.MEMBER;
 };
 
 /**
@@ -246,6 +281,120 @@ export const syncOrganisationForUser = async ({
 };
 
 /**
+ * Provision or join a team for a user given DOS ID team claims.
+ */
+export const syncTeamForUser = async ({
+  userId,
+  team,
+  organisationId,
+}: {
+  userId: number;
+  team: DosTeamClaim;
+  organisationId: string;
+}) => {
+  const teamName = team.name || team.slug || 'Team';
+  const rawTeamSlug = team.slug || team.id || team.team_id || prefixedId('team');
+  const teamRole = mapDosRoleToTeamRole(team.role);
+
+  // Check if team exists under this organisation
+  let existingTeam = await prisma.team.findFirst({
+    where: {
+      organisationId,
+      OR: [{ url: rawTeamSlug }, { name: teamName }],
+    },
+    include: {
+      teamGroups: {
+        include: {
+          organisationGroup: {
+            include: {
+              organisationGroupMembers: {
+                include: {
+                  organisationMember: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // If team doesn't exist, create it
+  if (!existingTeam) {
+    try {
+      await createTeam({
+        userId,
+        teamName,
+        teamUrl: rawTeamSlug,
+        organisationId,
+        inheritMembers: true,
+      });
+
+      existingTeam = await prisma.team.findFirst({
+        where: {
+          organisationId,
+          url: rawTeamSlug,
+        },
+        include: {
+          teamGroups: {
+            include: {
+              organisationGroup: {
+                include: {
+                  organisationGroupMembers: {
+                    include: {
+                      organisationMember: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    } catch (err) {
+      console.warn(`[DOS ID] Could not create team ${teamName} (${rawTeamSlug}):`, err);
+    }
+  }
+
+  if (!existingTeam) {
+    return;
+  }
+
+  // Find user's organisation member record
+  const orgMember = await prisma.organisationMember.findFirst({
+    where: {
+      userId,
+      organisationId,
+    },
+  });
+
+  if (!orgMember) {
+    return;
+  }
+
+  // Find matching team group for the desired role
+  const matchingTeamGroup = existingTeam.teamGroups.find(
+    (tg) => tg.teamRole === teamRole,
+  );
+
+  if (matchingTeamGroup) {
+    const isAlreadyInGroup = matchingTeamGroup.organisationGroup.organisationGroupMembers.some(
+      (ogm) => ogm.organisationMember.userId === userId,
+    );
+
+    if (!isAlreadyInGroup) {
+      await prisma.organisationGroupMember.create({
+        data: {
+          id: generateDatabaseId('group_member'),
+          groupId: matchingTeamGroup.organisationGroupId,
+          organisationMemberId: orgMember.id,
+        },
+      }).catch(() => null);
+    }
+  }
+};
+
+/**
  * Main JIT sync function triggered on OIDC callback.
  */
 export const syncDosProfileAndOrgs = async ({
@@ -254,6 +403,8 @@ export const syncDosProfileAndOrgs = async ({
   name,
   avatarUrl,
   organizations,
+  teams,
+  activeOrgId,
 }: SyncDosUserOptions) => {
   // 1. Sync Name
   if (name) {
@@ -338,6 +489,40 @@ export const syncDosProfileAndOrgs = async ({
         await syncOrganisationForUser({ userId, org }).catch((err) => {
           console.error(`[DOS ID] Failed to JIT provision org for user ${userId}:`, err);
         });
+      }
+    }
+  }
+
+  // 4. JIT Provision Teams from claims
+  if (Array.isArray(teams) && teams.length > 0) {
+    for (const team of teams) {
+      if (team && typeof team === 'object') {
+        const targetOrgId = team.org_id || team.organisation_id || activeOrgId;
+        const targetOrg = targetOrgId
+          ? await prisma.organisation.findFirst({
+              where: {
+                OR: [{ id: targetOrgId }, { url: targetOrgId }],
+              },
+              select: { id: true },
+            })
+          : await prisma.organisationMember.findFirst({
+              where: { userId },
+              select: { organisationId: true },
+            });
+
+        if (targetOrg) {
+          const finalOrgId = 'id' in targetOrg ? targetOrg.id : targetOrg.organisationId;
+          await syncTeamForUser({
+            userId,
+            team,
+            organisationId: finalOrgId,
+          }).catch((err) => {
+            console.error(
+              `[DOS ID] Failed to JIT sync team ${team.name || team.slug} for user ${userId}:`,
+              err,
+            );
+          });
+        }
       }
     }
   }
