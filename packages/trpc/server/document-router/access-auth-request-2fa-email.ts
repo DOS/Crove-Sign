@@ -59,12 +59,16 @@ export const accessAuthRequest2FAEmailRoute = procedure
 
       const [recipient] = envelope.recipients;
 
-      const { derivedRecipientAccessAuth } = extractDocumentAuthMethods({
+      const { derivedRecipientAccessAuth, derivedRecipientActionAuth } = extractDocumentAuthMethods({
         documentAuth: envelope.authOptions,
         recipientAuth: recipient.authOptions,
       });
 
-      if (!derivedRecipientAccessAuth.includes(DocumentAuth.TWO_FACTOR_AUTH)) {
+      const requires2FA =
+        derivedRecipientAccessAuth.includes(DocumentAuth.TWO_FACTOR_AUTH) ||
+        derivedRecipientActionAuth.includes(DocumentAuth.TWO_FACTOR_AUTH);
+
+      if (!requires2FA) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: '2FA is not required for this document',
