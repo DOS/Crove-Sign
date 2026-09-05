@@ -133,7 +133,9 @@ export const linkOrganisationAccount = async ({ token, requestMeta }: LinkOrgani
     await addUserToOrganisation({
       organisationId: organisation.id,
       userId: user.id,
-      role: organisation.organisationAuthenticationPortal.defaultOrganisationRole,
+      organisationGroups: organisation.groups,
+      organisationMemberRole: organisation.organisationAuthenticationPortal.defaultOrganisationRole,
+      bypassEmail: true,
     });
   }
 };
