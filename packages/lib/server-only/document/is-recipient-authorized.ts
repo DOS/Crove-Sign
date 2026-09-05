@@ -120,7 +120,8 @@ export const isRecipientAuthorized = async ({
         return true;
       }
 
-      if (type === 'ACCESS_2FA' && method === 'email') {
+      // Explicit email OTP validation (for ACCESS_2FA or ACTION auth)
+      if (method === 'email') {
         return await validateTwoFactorTokenFromEmail({
           envelopeId: recipient.envelopeId,
           email: recipient.email,
@@ -129,8 +130,14 @@ export const isRecipientAuthorized = async ({
         });
       }
 
+      // If user is not logged in, attempt email OTP validation
       if (!userId) {
-        return false;
+        return await validateTwoFactorTokenFromEmail({
+          envelopeId: recipient.envelopeId,
+          email: recipient.email,
+          code: token,
+          window: 10,
+        });
       }
 
       const user = await prisma.user.findFirst({
@@ -139,18 +146,31 @@ export const isRecipientAuthorized = async ({
         },
       });
 
-      // Should not be possible.
       if (!user) {
         throw new AppError(AppErrorCode.NOT_FOUND, {
           message: 'User not found',
         });
       }
 
-      // For ACTION auth or authenticator method, use TOTP
-      return await verifyTwoFactorAuthenticationToken({
-        user,
-        totpCode: token,
-        window: 10, // 5 minutes worth of tokens
+      // If user has TOTP enabled, verify TOTP first
+      if (user.twoFactorEnabled && user.twoFactorSecret) {
+        const isValidTotp = await verifyTwoFactorAuthenticationToken({
+          user,
+          totpCode: token,
+          window: 10, // 5 minutes worth of tokens
+        });
+
+        if (isValidTotp) {
+          return true;
+        }
+      }
+
+      // Fallback: Validate as Email OTP token
+      return await validateTwoFactorTokenFromEmail({
+        envelopeId: recipient.envelopeId,
+        email: recipient.email,
+        code: token,
+        window: 10,
       });
     })
     .with({ type: DocumentAuth.PASSWORD }, async ({ password }) => {
