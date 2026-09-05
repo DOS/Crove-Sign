@@ -1,4 +1,4 @@
-import { reregisterEmailDomain } from '@documenso/ee/server-only/lib/reregister-email-domain';
+import { reregisterEmailDomain } from '@documenso/lib/server-only/email-domain/reregister-email-domain';
 
 import { adminProcedure } from '../trpc';
 import {
