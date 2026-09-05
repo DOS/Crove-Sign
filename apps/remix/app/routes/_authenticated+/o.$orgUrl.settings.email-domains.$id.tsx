@@ -100,20 +100,6 @@ export default function OrganisationEmailDomainSettingsPage({ params }: Route.Co
   const pageHeader = t`Email Domain Settings`;
   const pageSubtitle = t`Manage your email domain settings.`;
 
-  if (!IS_BILLING_ENABLED()) {
-    return null;
-  }
-
-  if (!organisation.organisationClaim.flags.emailDomains && IS_DOCUMENSO_CLOUD()) {
-    return (
-      <div>
-        <SettingsHeader hideDivider title={pageHeader} subtitle={pageSubtitle} />
-
-        <EmailDomainsUpsell />
-      </div>
-    );
-  }
-
   if (isLoadingEmailDomain) {
     return <SpinnerBox className="py-32" />;
   }

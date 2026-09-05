@@ -22,11 +22,7 @@ export default function OrganisationSettingsEmailDomains() {
 
   const organisation = useCurrentOrganisation();
 
-  const isEmailDomainsEnabled = organisation.organisationClaim.flags.emailDomains;
-
-  if (!IS_BILLING_ENABLED()) {
-    return null;
-  }
+  const isEmailDomainsEnabled = true;
 
   return (
     <div>
@@ -35,36 +31,12 @@ export default function OrganisationSettingsEmailDomains() {
         title={t`Email Domains`}
         subtitle={t`Here you can add email domains to your organisation.`}
       >
-        {isEmailDomainsEnabled && <OrganisationEmailDomainCreateDialog />}
+        <OrganisationEmailDomainCreateDialog />
       </SettingsHeader>
 
-      {isEmailDomainsEnabled ? (
-        <section>
-          <OrganisationEmailDomainsDataTable />
-        </section>
-      ) : IS_DOCUMENSO_CLOUD() ? (
-        <EmailDomainsUpsell />
-      ) : (
-        <Alert className="mt-8 flex flex-col justify-between p-6 sm:flex-row sm:items-center" variant="neutral">
-          <div className="mb-4 sm:mb-0">
-            <AlertTitle>
-              <Trans>Email Domains</Trans>
-            </AlertTitle>
-
-            <AlertDescription className="mr-2">
-              <Trans>Currently email domains can only be configured for Platform and above plans.</Trans>
-            </AlertDescription>
-          </div>
-
-          {canExecuteOrganisationAction('MANAGE_BILLING', organisation.currentOrganisationRole) && (
-            <Button asChild variant="outline">
-              <Link to={`/o/${organisation.url}/settings/billing`}>
-                <Trans>Update Billing</Trans>
-              </Link>
-            </Button>
-          )}
-        </Alert>
-      )}
+      <section>
+        <OrganisationEmailDomainsDataTable />
+      </section>
     </div>
   );
 }
