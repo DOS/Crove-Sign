@@ -25,12 +25,6 @@ export const updateOrganisationAuthenticationPortalRoute = authenticatedProcedur
       },
     });
 
-    if (!IS_BILLING_ENABLED()) {
-      throw new AppError(AppErrorCode.INVALID_REQUEST, {
-        message: 'Billing is not enabled',
-      });
-    }
-
     const organisation = await prisma.organisation.findFirst({
       where: buildOrganisationWhereQuery({
         organisationId,
@@ -45,12 +39,6 @@ export const updateOrganisationAuthenticationPortalRoute = authenticatedProcedur
 
     if (!organisation) {
       throw new AppError(AppErrorCode.UNAUTHORIZED);
-    }
-
-    if (!organisation.organisationClaim.flags.authenticationPortal) {
-      throw new AppError(AppErrorCode.INVALID_REQUEST, {
-        message: 'Authentication portal is not allowed for this organisation',
-      });
     }
 
     const {

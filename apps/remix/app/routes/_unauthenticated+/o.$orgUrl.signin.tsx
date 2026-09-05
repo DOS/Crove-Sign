@@ -70,8 +70,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   if (
     !organisation ||
-    !organisation.organisationAuthenticationPortal.enabled ||
-    !organisation.organisationClaim.flags.authenticationPortal
+    !organisation.organisationAuthenticationPortal.enabled
   ) {
     throw new AppError(AppErrorCode.NOT_FOUND, {
       message: 'Organisation not found',

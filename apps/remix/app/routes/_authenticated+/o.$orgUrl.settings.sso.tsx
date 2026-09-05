@@ -65,7 +65,7 @@ export default function OrganisationSettingSSOLoginPage() {
   const { t } = useLingui();
   const organisation = useCurrentOrganisation();
 
-  const isAuthenticationPortalEnabled = organisation.organisationClaim.flags.authenticationPortal === true;
+  const isAuthenticationPortalEnabled = true;
 
   const { data: authenticationPortal, isLoading: isLoadingAuthenticationPortal } =
     trpc.enterprise.organisation.authenticationPortal.get.useQuery(
@@ -73,8 +73,6 @@ export default function OrganisationSettingSSOLoginPage() {
         organisationId: organisation.id,
       },
       {
-        // The endpoint rejects orgs without the claim flag, so don't fire
-        // requests that are guaranteed to error.
         enabled: isAuthenticationPortalEnabled,
       },
     );
