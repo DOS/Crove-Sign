@@ -40,16 +40,7 @@ export const getOrganisationAuthenticationPortalOptions = async (
     });
   }
 
-  if (!IS_BILLING_ENABLED()) {
-    throw new AppError(AppErrorCode.NOT_SETUP, {
-      message: 'Billing is not enabled',
-    });
-  }
-
-  if (
-    !organisation.organisationClaim.flags.authenticationPortal ||
-    !organisation.organisationAuthenticationPortal.enabled
-  ) {
+  if (!organisation.organisationAuthenticationPortal.enabled) {
     throw new AppError(AppErrorCode.NOT_SETUP, {
       message: 'Authentication portal is not enabled for this organisation',
     });

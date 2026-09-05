@@ -1,4 +1,4 @@
-import { sendOrganisationAccountLinkConfirmationEmail } from '@documenso/ee/server-only/lib/send-organisation-account-link-confirmation-email';
+import { sendOrganisationAccountLinkConfirmationEmail } from '@documenso/lib/server-only/organisation/sso/send-sso-link-confirmation-email';
 import { formatPath } from '@documenso/lib/constants/app';
 import { isDisposableEmail, isSignupEnabledForProvider } from '@documenso/lib/constants/auth';
 import { AppError } from '@documenso/lib/errors/app-error';

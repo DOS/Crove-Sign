@@ -65,12 +65,6 @@ export const getOrganisationAuthenticationPortal = async ({
     });
   }
 
-  if (!organisation.organisationClaim.flags.authenticationPortal) {
-    throw new AppError(AppErrorCode.NOT_FOUND, {
-      message: 'Authentication portal not found',
-    });
-  }
-
   const portal = organisation.organisationAuthenticationPortal;
 
   return {
