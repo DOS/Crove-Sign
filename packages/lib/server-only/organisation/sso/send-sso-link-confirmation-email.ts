@@ -84,7 +84,17 @@ export const sendOrganisationAccountLinkConfirmationEmail = async ({
     meta: null,
   });
 
-  const assetBaseUrl = NEXT_PUBLIC_WEBAPP_URL() || 'https://sign.crove.com';
+  // Fail closed instead of silently linking verification emails to a
+  // hardcoded production domain when NEXT_PUBLIC_WEBAPP_URL is missing (a
+  // self-hosted deployment would otherwise email links pointing at crove.com).
+  const assetBaseUrl = NEXT_PUBLIC_WEBAPP_URL();
+
+  if (!assetBaseUrl) {
+    throw new Error(
+      'NEXT_PUBLIC_WEBAPP_URL is required to send the SSO account link confirmation email',
+    );
+  }
+
   const confirmationLink = `${assetBaseUrl}/organisation/sso/confirmation/${createdToken.token}`;
 
   const confirmationTemplate = createElement(OrganisationAccountLinkConfirmationTemplate, {

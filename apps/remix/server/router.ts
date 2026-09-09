@@ -10,6 +10,7 @@ import {
   apiV1RateLimit,
   apiV2RateLimit,
   fileUploadRateLimit,
+  webhookIngestRateLimit,
 } from '@documenso/lib/server-only/rate-limit/rate-limits';
 import { TelemetryClient } from '@documenso/lib/server-only/telemetry/telemetry-client';
 import { migrateDeletedAccountServiceAccount } from '@documenso/lib/server-only/user/service-accounts/deleted-account';
@@ -60,6 +61,7 @@ const apiV2RateLimitMiddleware = createRateLimitMiddleware(apiV2RateLimit);
 const aiRateLimitMiddleware = createRateLimitMiddleware(aiRateLimit);
 const trpcRateLimitMiddleware = createRateLimitMiddleware(apiTrpcRateLimit);
 const fileRateLimitMiddleware = createRateLimitMiddleware(fileUploadRateLimit);
+const webhookIngestRateLimitMiddleware = createRateLimitMiddleware(webhookIngestRateLimit);
 
 /**
  * Attach session and context to requests.
@@ -119,6 +121,7 @@ app.route('/api/ai', aiRoute);
 app.route('/api/csc', csc);
 
 // DOS.Me Webhook endpoints.
+app.use('/api/webhooks/*', webhookIngestRateLimitMiddleware);
 app.route('/api/webhooks', dosWebhookRoute);
 
 // Decentralized EAS & Blockchain Attestation Verification endpoints.

@@ -122,22 +122,12 @@ export const isRecipientAuthorized = async ({
 
       // Explicit email OTP validation (for ACCESS_2FA or ACTION auth)
       if (method === 'email') {
-        return await validateTwoFactorTokenFromEmail({
-          envelopeId: recipient.envelopeId,
-          email: recipient.email,
-          code: token,
-          window: 10, // 5 minutes worth of tokens
-        });
+        return await validateEmailOtpWithLockout(recipient, token);
       }
 
       // If user is not logged in, attempt email OTP validation
       if (!userId) {
-        return await validateTwoFactorTokenFromEmail({
-          envelopeId: recipient.envelopeId,
-          email: recipient.email,
-          code: token,
-          window: 10,
-        });
+        return await validateEmailOtpWithLockout(recipient, token);
       }
 
       const user = await prisma.user.findFirst({
@@ -152,26 +142,21 @@ export const isRecipientAuthorized = async ({
         });
       }
 
-      // If user has TOTP enabled, verify TOTP first
+      // Users with TOTP enabled must pass TOTP. Silently falling back to the
+      // email code here downgrades a phishing-resistant factor to mailbox
+      // possession; the email path remains available by explicitly selecting
+      // the email method in the UI.
       if (user.twoFactorEnabled && user.twoFactorSecret) {
-        const isValidTotp = await verifyTwoFactorAuthenticationToken({
+        return await verifyTwoFactorAuthenticationToken({
           user,
           totpCode: token,
           window: 10, // 5 minutes worth of tokens
         });
-
-        if (isValidTotp) {
-          return true;
-        }
       }
 
-      // Fallback: Validate as Email OTP token
-      return await validateTwoFactorTokenFromEmail({
-        envelopeId: recipient.envelopeId,
-        email: recipient.email,
-        code: token,
-        window: 10,
-      });
+      // No TOTP configured on the account: the email OTP is the only
+      // available re-authentication factor.
+      return await validateEmailOtpWithLockout(recipient, token);
     })
     .with({ type: DocumentAuth.PASSWORD }, async ({ password }) => {
       if (!userId) {
@@ -187,6 +172,92 @@ export const isRecipientAuthorized = async ({
       return true;
     })
     .exhaustive();
+};
+
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+const OTP_ATTEMPT_ACTION = 'auth.recipient-email-otp';
+
+const getOtpLockoutBucket = (): Date => {
+  const now = Date.now();
+
+  return new Date(now - (now % OTP_LOCKOUT_WINDOW_MS));
+};
+
+/**
+ * Validates a recipient email OTP with a per-(envelope, email)
+ * failed-attempt lockout.
+ *
+ * The email OTP is stateless (a HOTP derived from the envelope and email),
+ * so without an attempt counter nothing stops unlimited online guessing of
+ * the 6-digit code. Failed attempts are tracked in the existing RateLimit
+ * table; a successful validation resets the counter for that recipient.
+ */
+export const validateEmailOtpWithLockout = async (
+  recipient: Pick<Recipient, 'email' | 'envelopeId'>,
+  code: string,
+): Promise<boolean> => {
+  const bucket = getOtpLockoutBucket();
+  const failKey = `otp-fail:${recipient.envelopeId}:${recipient.email.toLowerCase()}`;
+
+  const lockoutWhere = {
+    key_action_bucket: {
+      key: failKey,
+      action: OTP_ATTEMPT_ACTION,
+      bucket,
+    },
+  };
+
+  const failRecord = await prisma.rateLimit.findUnique({
+    where: lockoutWhere,
+  });
+
+  if (failRecord && failRecord.count >= OTP_MAX_ATTEMPTS) {
+    throw new AppError(AppErrorCode.TOO_MANY_REQUESTS, {
+      message:
+        'Too many invalid verification attempts. Please request a new code and try again later.',
+      headers: {
+        'Retry-After': String(
+          Math.max(1, Math.ceil((bucket.getTime() + OTP_LOCKOUT_WINDOW_MS - Date.now()) / 1000)),
+        ),
+      },
+    });
+  }
+
+  const isValid = await validateTwoFactorTokenFromEmail({
+    envelopeId: recipient.envelopeId,
+    email: recipient.email,
+    code,
+    window: 10, // 5 minutes worth of tokens
+  });
+
+  if (isValid) {
+    await prisma.rateLimit
+      .deleteMany({
+        where: {
+          key: failKey,
+          action: OTP_ATTEMPT_ACTION,
+        },
+      })
+      .catch(() => null);
+
+    return true;
+  }
+
+  await prisma.rateLimit.upsert({
+    where: lockoutWhere,
+    create: {
+      key: failKey,
+      action: OTP_ATTEMPT_ACTION,
+      bucket,
+      count: 1,
+    },
+    update: {
+      count: { increment: 1 },
+    },
+  });
+
+  return false;
 };
 
 type VerifyPasskeyOptions = {

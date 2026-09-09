@@ -3,13 +3,22 @@ import { jobsClient } from '@documenso/lib/jobs/client';
 import { handleDosWebhookEvent } from '@documenso/lib/server-only/dos-id/handle-dos-webhook';
 import { verifyDosWebhookSignature } from '@documenso/lib/server-only/dos-id/verify-dos-signature';
 import { env } from '@documenso/lib/utils/env';
+import { prisma } from '@documenso/prisma';
 import { Hono } from 'hono';
 
-// In-memory idempotency cache (TTL: 10 minutes)
+// In-memory idempotency cache (TTL: 10 minutes) - fast path only; durable
+// markers live in the database so a redelivered event is not re-processed
+// after a restart or on another replica.
 const processedEventIds = new Map<string, number>();
 const IDEMPOTENCY_TTL_MS = 10 * 60 * 1000;
 
-const isDuplicateEvent = (eventId: string): boolean => {
+const WEBHOOK_DEDUPE_ACTION = 'webhook.dos-dedupe';
+// Fixed bucket: dedupe markers are permanent one-row-per-event records, not
+// rate-limit counters. Purge rows with this action if the table ever needs
+// trimming.
+const WEBHOOK_DEDUPE_BUCKET = new Date('2020-01-01T00:00:00.000Z');
+
+const isDuplicateEvent = async (eventId: string): Promise<boolean> => {
   const now = Date.now();
 
   // Clean expired entries
@@ -23,7 +32,43 @@ const isDuplicateEvent = (eventId: string): boolean => {
     return true;
   }
 
+  // Durable marker: the in-memory cache above is lost on restart and is
+  // per-replica, so without it a redelivered event (or an event replayed
+  // from the queue after a crash) would be processed a second time -
+  // including destructive events like org.deleted.
+  const dedupeKey = `webhook-evt:${eventId}`;
+
+  const existing = await prisma.rateLimit
+    .findUnique({
+      where: {
+        key_action_bucket: {
+          key: dedupeKey,
+          action: WEBHOOK_DEDUPE_ACTION,
+          bucket: WEBHOOK_DEDUPE_BUCKET,
+        },
+      },
+    })
+    .catch(() => null);
+
   processedEventIds.set(eventId, now);
+
+  if (existing) {
+    return true;
+  }
+
+  // A lost create race across replicas only weakens dedupe for that single
+  // event; dedupe stays fail-open rather than blocking the webhook.
+  await prisma.rateLimit
+    .create({
+      data: {
+        key: dedupeKey,
+        action: WEBHOOK_DEDUPE_ACTION,
+        bucket: WEBHOOK_DEDUPE_BUCKET,
+        count: 1,
+      },
+    })
+    .catch(() => null);
+
   return false;
 };
 
@@ -34,21 +79,56 @@ export const dosWebhookRoute = new Hono()
 
     const rawBody = await c.req.text();
 
-    if (webhookSecret) {
-      const isValid = verifyDosWebhookSignature({
-        rawBody,
-        signatureHeader,
-        secret: webhookSecret,
-      });
+    let eventName = '';
 
-      if (!isValid) {
-        return c.json({ success: false, message: 'Invalid webhook signature' }, 401);
+    try {
+      eventName = (JSON.parse(rawBody).event || '').toString().toLowerCase();
+    } catch {
+      eventName = '';
+    }
+
+    const isPingEvent =
+      eventName === 'ping' || eventName === 'test' || eventName === 'endpoint.test';
+
+    // Fail-closed: the webhook handler performs privileged mutations
+    // (organisation deletion, member role grants), so it must never run
+    // without a configured shared secret. Only the connectivity ping is
+    // allowed through so the Developer Portal health check still reports
+    // that the endpoint is reachable but unconfigured.
+    if (!webhookSecret) {
+      if (isPingEvent) {
+        return c.json(
+          {
+            success: false,
+            message:
+              'Webhook secret is not configured; events will be rejected. Set CROVE_DOS_WEBHOOK_SECRET.',
+            eventId: 'unconfigured',
+          },
+          200,
+        );
       }
+
+      return c.json(
+        {
+          success: false,
+          message: 'Webhook endpoint is not configured to process events',
+        },
+        503,
+      );
+    }
+
+    const isValid = verifyDosWebhookSignature({
+      rawBody,
+      signatureHeader,
+      secret: webhookSecret,
+    });
+
+    if (!isValid) {
+      return c.json({ success: false, message: 'Invalid webhook signature' }, 401);
     }
 
     try {
       const payload = JSON.parse(rawBody);
-      const eventName = (payload.event || '').toLowerCase();
       const eventId =
         payload.id ||
         payload.event_id ||
@@ -70,7 +150,7 @@ export const dosWebhookRoute = new Hono()
       }
 
       // Idempotency check: avoid duplicate execution for identical payloads in a 10-minute window
-      if (isDuplicateEvent(eventId)) {
+      if (await isDuplicateEvent(eventId)) {
         return c.json(
           {
             success: true,
@@ -108,9 +188,6 @@ export const dosWebhookRoute = new Hono()
       return c.json(result, result.success ? 200 : 400);
     } catch (error) {
       console.error('[DOS Webhook] Error processing payload:', error);
-      return c.json(
-        { success: false, message: error instanceof Error ? error.message : 'Internal Server Error' },
-        500,
-      );
+      return c.json({ success: false, message: 'Internal Server Error' }, 500);
     }
   });

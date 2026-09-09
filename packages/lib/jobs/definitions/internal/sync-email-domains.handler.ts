@@ -1,5 +1,10 @@
-import { reregisterEmailDomain } from '@documenso/ee/server-only/lib/reregister-email-domain';
-import { verifyEmailDomain } from '@documenso/ee/server-only/lib/verify-email-domain';
+// Use the lib (fork) implementations, not the EE originals: the fork's
+// getSesClient() returns null when SES is unconfigured and falls back to DNS
+// verification, while the EE versions throw - which made this job fail for
+// every pending domain on SES-less deployments while the manual "Verify"
+// button kept working.
+import { reregisterEmailDomain } from '@documenso/lib/server-only/email-domain/reregister-email-domain';
+import { verifyEmailDomain } from '@documenso/lib/server-only/email-domain/verify-email-domain';
 import { prisma } from '@documenso/prisma';
 import { DateTime } from 'luxon';
 
