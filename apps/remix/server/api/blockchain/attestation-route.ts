@@ -39,10 +39,7 @@ export const attestationRoute = new Hono()
       );
     } catch (error) {
       console.error(`[Attestation API] Error fetching anchor for ${envelopeId}:`, error);
-      return c.json(
-        { success: false, message: error instanceof Error ? error.message : 'Internal Server Error' },
-        500,
-      );
+      return c.json({ success: false, message: 'Internal Server Error' }, 500);
     }
   })
 
@@ -58,9 +55,9 @@ export const attestationRoute = new Hono()
 
       if (contentType.includes('multipart/form-data')) {
         const body = await c.req.parseBody();
-        const file = body['file'];
+        const file = body.file;
 
-        if (!file || !(file instanceof Blob || typeof (file as any).arrayBuffer === 'function')) {
+        if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
           return c.json({ success: false, message: 'File is required in multipart form data' }, 400);
         }
 
@@ -86,10 +83,7 @@ export const attestationRoute = new Hono()
       );
     } catch (error) {
       console.error('[Attestation API] Error verifying document buffer:', error);
-      return c.json(
-        { success: false, message: error instanceof Error ? error.message : 'Internal Server Error' },
-        500,
-      );
+      return c.json({ success: false, message: 'Internal Server Error' }, 500);
     }
   })
 
@@ -114,9 +108,6 @@ export const attestationRoute = new Hono()
       return c.json({ success: true, result }, 200);
     } catch (error) {
       console.error('[Attestation API] Error resolving QR token:', error);
-      return c.json(
-        { success: false, message: error instanceof Error ? error.message : 'Internal Server Error' },
-        500,
-      );
+      return c.json({ success: false, message: 'Internal Server Error' }, 500);
     }
   });

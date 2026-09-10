@@ -6,7 +6,6 @@ import { deleteOrganisation } from '../organisation/delete-organisation';
 import { createTeam } from '../team/create-team';
 import {
   mapDosRoleToOrgRole,
-  mapDosRoleToTeamRole,
   syncOrganisationForUser,
   syncTeamForUser,
   syncUserAvatarFromUrl,
@@ -68,7 +67,8 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
           data: {
             email: ownerEmail.toLowerCase(),
             name: (data.owner_name as string) || ownerEmail.split('@')[0],
-            emailVerified: new Date(),
+            // Email ownership is not proven by the webhook payload; never auto-verify.
+            emailVerified: null,
           },
         });
       }
@@ -180,7 +180,8 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
           data: {
             email: userEmail.toLowerCase(),
             name: (data.user_name as string) || userEmail.split('@')[0],
-            emailVerified: new Date(),
+            // Email ownership is not proven by the webhook payload; never auto-verify.
+            emailVerified: null,
           },
         });
       }
@@ -305,11 +306,17 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
       const teamSlug = (data.slug || data.team_slug) as string | undefined;
       const teamName = (data.name || data.team_name) as string | undefined;
 
+      if (!orgId) {
+        return { success: false, message: 'Missing org_id in team.updated' };
+      }
+
       const team = await prisma.team.findFirst({
         where: {
-          ...(orgId ? { organisation: { OR: [{ id: orgId }, { url: orgId }] } } : {}),
+          // Org scope is mandatory: a bare team id/slug match could resolve
+          // to a team in another organisation (cross-tenant mutation).
+          organisation: { OR: [{ id: orgId }, { url: orgId }] },
           OR: [
-            ...(teamId && !isNaN(Number(teamId)) ? [{ id: Number(teamId) }] : []),
+            ...(teamId && !Number.isNaN(Number(teamId)) ? [{ id: Number(teamId) }] : []),
             ...(teamSlug ? [{ url: teamSlug }] : []),
           ],
         },
@@ -335,11 +342,17 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
       const teamId = (data.team_id || data.id) as string | undefined;
       const teamSlug = (data.slug || data.team_slug) as string | undefined;
 
+      if (!orgId) {
+        return { success: false, message: 'Missing org_id in team.deleted' };
+      }
+
       const team = await prisma.team.findFirst({
         where: {
-          ...(orgId ? { organisation: { OR: [{ id: orgId }, { url: orgId }] } } : {}),
+          // Org scope is mandatory: a bare team id/slug match could resolve
+          // to a team in another organisation (cross-tenant deletion).
+          organisation: { OR: [{ id: orgId }, { url: orgId }] },
           OR: [
-            ...(teamId && !isNaN(Number(teamId)) ? [{ id: Number(teamId) }] : []),
+            ...(teamId && !Number.isNaN(Number(teamId)) ? [{ id: Number(teamId) }] : []),
             ...(teamSlug ? [{ url: teamSlug }] : []),
           ],
         },
@@ -386,27 +399,29 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
           data: {
             email: userEmail.toLowerCase(),
             name: (data.user_name as string) || userEmail.split('@')[0],
-            emailVerified: new Date(),
+            // Email ownership is not proven by the webhook payload; never auto-verify.
+            emailVerified: null,
           },
         });
       }
 
-      // Resolve target organization
-      const targetOrg = orgId
-        ? await prisma.organisation.findFirst({
-            where: { OR: [{ id: orgId }, { url: orgId }] },
-            select: { id: true },
-          })
-        : await prisma.organisationMember.findFirst({
-            where: { userId: user.id },
-            select: { organisationId: true },
-          });
+      // Resolve target organisation — the payload must name it explicitly.
+      // Falling back to "any organisation the user belongs to" lets a
+      // mis-scoped payload mutate a team in the wrong tenant.
+      if (!orgId) {
+        return { success: false, message: 'Missing org_id in team.member_added' };
+      }
+
+      const targetOrg = await prisma.organisation.findFirst({
+        where: { OR: [{ id: orgId }, { url: orgId }] },
+        select: { id: true },
+      });
 
       if (!targetOrg) {
         return { success: false, message: 'Target organisation not found' };
       }
 
-      const finalOrgId = 'id' in targetOrg ? targetOrg.id : targetOrg.organisationId;
+      const finalOrgId = targetOrg.id;
 
       await syncTeamForUser({
         userId: user.id,
@@ -427,6 +442,10 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
       const teamSlug = (data.slug || data.team_slug || data.team_id || data.id) as string | undefined;
       const userEmail = (data.user_email || data.email) as string | undefined;
 
+      if (!orgId) {
+        return { success: false, message: 'Missing org_id in team.member_removed' };
+      }
+
       if (!userEmail) {
         return { success: false, message: 'Missing user_email in team.member_removed' };
       }
@@ -441,9 +460,11 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
 
       const team = await prisma.team.findFirst({
         where: {
-          ...(orgId ? { organisation: { OR: [{ id: orgId }, { url: orgId }] } } : {}),
+          // Org scope is mandatory: a numeric team_id can collide with a team
+          // in another organisation (cross-tenant member removal).
+          organisation: { OR: [{ id: orgId }, { url: orgId }] },
           OR: [
-            ...(teamSlug && !isNaN(Number(teamSlug)) ? [{ id: Number(teamSlug) }] : []),
+            ...(teamSlug && !Number.isNaN(Number(teamSlug)) ? [{ id: Number(teamSlug) }] : []),
             ...(teamSlug ? [{ url: teamSlug }] : []),
           ],
         },

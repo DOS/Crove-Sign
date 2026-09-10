@@ -32,7 +32,7 @@ Add the variables to your deployment `.env` (or secret manager):
 
 ### Option A: Service Account Key (Recommended)
 
-```env
+```bash
 GOOGLE_VERTEX_PROJECT_ID="<your-gcp-project-id>"
 GOOGLE_VERTEX_SERVICE_ACCOUNT_KEY="<raw-json-or-base64-encoded-key>"
 # Optional, defaults to "global"
@@ -41,7 +41,7 @@ GOOGLE_VERTEX_LOCATION="global"
 
 ### Option B: Express API Key
 
-```env
+```bash
 GOOGLE_VERTEX_PROJECT_ID="<your-gcp-project-id>"
 GOOGLE_VERTEX_API_KEY="<your-vertex-api-key>"
 # Optional, defaults to "global"
@@ -50,7 +50,7 @@ GOOGLE_VERTEX_LOCATION="global"
 
 ### Option C: Application Default Credentials (ADC)
 
-```env
+```bash
 GOOGLE_VERTEX_PROJECT_ID="<your-gcp-project-id>"
 GOOGLE_VERTEX_USE_ADC="true"
 # Optional, defaults to "global"

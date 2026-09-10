@@ -2,44 +2,93 @@ import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import {
-  CROVE_ATTESTATION_RESOLVER_ABI,
-  CROVE_SIGN_SCHEMA_V2,
+  CROVE_ANCHOR_GATEWAY_ABI,
+  CROVE_EAS_SCHEMA_V2,
+  CROVE_RESOLVER_ABI,
 } from './resolver-abi';
 
 describe('CroveAttestationResolver ABI & Schema Contract', () => {
   it('should export the standard Crove Sign EAS schema v2', () => {
-    expect(CROVE_SIGN_SCHEMA_V2).toBe(
-      'bytes32 anchorId, bytes32 documentHash, bytes32 auditRoot, uint16 itemIndex, uint16 itemCount, uint16 formatVersion',
+    expect(CROVE_EAS_SCHEMA_V2).toBe(
+      'bytes32 envelopeHash, bytes32 artifactRoot, bytes32 auditBundleRoot, bytes32 identityEvidenceRoot, bytes32 riskEvidenceRoot, bytes32 policyHash, uint16 evidenceVersion, uint8 eventType',
     );
   });
 
-  it('should include all required view functions for reverse lookup in ABI', () => {
-    const functionNames = CROVE_ATTESTATION_RESOLVER_ABI.filter(
-      (item) => item.type === 'function',
-    ).map((item) => item.name);
+  it('should include all required view functions for reverse lookup in the resolver ABI', () => {
+    const functionNames = CROVE_RESOLVER_ABI
+      .filter((item) => item.type === 'function')
+      .map((item) => item.name);
 
-    expect(functionNames).toContain('getAttestationUIDsByDocumentHash');
-    expect(functionNames).toContain('getAttestationUIDsByAnchorId');
-    expect(functionNames).toContain('getLatestAttestationUID');
-    expect(functionNames).toContain('isDocumentAttested');
-    expect(functionNames).toContain('verifyDocument');
-    expect(functionNames).toContain('authorizedAttesters');
-    expect(functionNames).toContain('setAuthorizedAttester');
-    expect(functionNames).toContain('setSchemaUID');
+    expect(functionNames).toContain('getAttestationsByArtifactRoot');
+    expect(functionNames).toContain('getAttestationsByEnvelopeHash');
+    expect(functionNames).toContain('getLatestAttestationByArtifactRoot');
+    expect(functionNames).toContain('verifyArtifact');
     expect(functionNames).toContain('owner');
+    expect(functionNames).toContain('trustedGateway');
+    expect(functionNames).toContain('schemaUID');
     expect(functionNames).toContain('getEAS');
+    expect(functionNames).toContain('setTrustedGateway');
+    expect(functionNames).toContain('setSchemaUID');
   });
 
-  it('should include all indexing events in ABI', () => {
-    const eventNames = CROVE_ATTESTATION_RESOLVER_ABI.filter(
-      (item) => item.type === 'event',
-    ).map((item) => item.name);
+  it('should include the anchoring entrypoints and the indexing event in the gateway ABI', () => {
+    const functionNames = CROVE_ANCHOR_GATEWAY_ABI
+      .filter((item) => item.type === 'function')
+      .map((item) => item.name);
 
-    expect(eventNames).toContain('DocumentAttested');
-    expect(eventNames).toContain('DocumentRevoked');
-    expect(eventNames).toContain('AttesterAuthorized');
-    expect(eventNames).toContain('SchemaUIDSet');
-    expect(eventNames).toContain('OwnershipTransferred');
+    expect(functionNames).toContain('anchorEnvelope');
+    expect(functionNames).toContain('batchAnchorEnvelopes');
+    expect(functionNames).toContain('authorizedRelayers');
+    expect(functionNames).toContain('anchorKeyToUID');
+
+    const eventNames = CROVE_ANCHOR_GATEWAY_ABI
+      .filter((item) => item.type === 'event')
+      .map((item) => item.name);
+
+    expect(eventNames).toContain('EnvelopeAnchored');
+  });
+
+  it('should keep the gateway payload components in sync with the EAS schema fields', () => {
+    // The schema string is what gets registered on EAS; the anchorEnvelope
+    // payload tuple is what gets attested against it. If one side changes
+    // without the other, on-chain attestations silently stop matching the
+    // registered schema, so this drift guard is part of the contract.
+    const schemaFields = CROVE_EAS_SCHEMA_V2.split(', ').map((field) => {
+      const [type, name] = field.trim().split(' ');
+
+      return { type: type ?? '', name: name ?? '' };
+    });
+
+    const anchorEnvelope = CROVE_ANCHOR_GATEWAY_ABI.find(
+      (item) => item.type === 'function' && item.name === 'anchorEnvelope',
+    );
+
+    expect(anchorEnvelope).toBeDefined();
+
+    if (!anchorEnvelope) {
+      return;
+    }
+
+    const payloadInput = anchorEnvelope.inputs.find((input) => input.name === 'payload');
+
+    expect(payloadInput).toBeDefined();
+
+    if (!payloadInput) {
+      return;
+    }
+
+    expect(payloadInput.type).toBe('tuple');
+
+    const components = payloadInput.components ?? [];
+
+    expect(components.map((component) => component.name)).toEqual(
+      schemaFields.map((field) => field.name),
+    );
+
+    // uint16/uint8 value types line up; bytes32 vs the schema's value types.
+    expect(components.map((component) => component.type)).toEqual(
+      schemaFields.map((field) => field.type),
+    );
   });
 
   it('should correctly simulate reverse lookup mapping logic', () => {
@@ -52,20 +101,16 @@ describe('CroveAttestationResolver ABI & Schema Contract', () => {
     const attestationUid = `0x${crypto.randomBytes(32).toString('hex')}`;
 
     // onAttest simulation
-    if (!documentHashToUIDs.has(docHash)) {
-      documentHashToUIDs.set(docHash, []);
-    }
-    documentHashToUIDs.get(docHash)!.push(attestationUid);
+    const existingDocUIDs = documentHashToUIDs.get(docHash) ?? [];
+    documentHashToUIDs.set(docHash, [...existingDocUIDs, attestationUid]);
 
-    if (!anchorIdToUIDs.has(anchorId)) {
-      anchorIdToUIDs.set(anchorId, []);
-    }
-    anchorIdToUIDs.get(anchorId)!.push(attestationUid);
+    const existingAnchorUIDs = anchorIdToUIDs.get(anchorId) ?? [];
+    anchorIdToUIDs.set(anchorId, [...existingAnchorUIDs, attestationUid]);
 
     // verifyDocument simulation
-    const uids = documentHashToUIDs.get(docHash) || [];
+    const uids = documentHashToUIDs.get(docHash) ?? [];
     const isAttested = uids.length > 0;
-    const latestUID = isAttested ? uids[uids.length - 1] : '0x0';
+    const latestUID = isAttested ? (uids[uids.length - 1] ?? '0x0') : '0x0';
     const count = uids.length;
 
     expect(isAttested).toBe(true);

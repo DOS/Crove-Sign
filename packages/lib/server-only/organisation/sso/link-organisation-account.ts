@@ -10,10 +10,10 @@ import type { RequestMetadata } from '@documenso/lib/universal/extract-request-m
 import { prisma } from '@documenso/prisma';
 import { UserSecurityAuditLogType } from '@prisma/client';
 
-export interface LinkOrganisationAccountOptions {
+export type LinkOrganisationAccountOptions = {
   token: string;
   requestMeta: RequestMetadata;
-}
+};
 
 export const linkOrganisationAccount = async ({ token, requestMeta }: LinkOrganisationAccountOptions) => {
   // Delete the token since it contains sensitive single-use data.

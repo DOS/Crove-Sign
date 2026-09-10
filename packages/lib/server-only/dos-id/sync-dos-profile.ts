@@ -1,4 +1,5 @@
 import { getSubscriptionClaim } from '@documenso/lib/server-only/subscription/get-subscription-claim';
+import { assertNotPrivateUrl } from '@documenso/lib/server-only/webhooks/assert-webhook-url';
 import { prisma } from '@documenso/prisma';
 import {
   OrganisationGroupType,
@@ -52,6 +53,11 @@ export type SyncDosUserOptions = {
  */
 export const syncUserAvatarFromUrl = async (userId: number, avatarUrl: string): Promise<string | null> => {
   try {
+    // The URL comes from OIDC claims and webhook payloads, so it is
+    // attacker-influenceable: guard it with the same SSRF checks as webhooks
+    // before the server fetches it.
+    await assertNotPrivateUrl(avatarUrl);
+
     const response = await fetch(avatarUrl, {
       signal: AbortSignal.timeout(5000),
     });

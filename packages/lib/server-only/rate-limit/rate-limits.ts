@@ -111,3 +111,13 @@ export const fileUploadRateLimit = createRateLimit({
   max: 20,
   window: '1m',
 });
+
+// ---- Webhook ingestion (Tier 3 - Unauthenticated surface) ----
+
+export const webhookIngestRateLimit = createRateLimit({
+  action: 'api.webhook-ingest',
+  max: 30,
+  globalMax: 300,
+  window: '1m',
+});
+
