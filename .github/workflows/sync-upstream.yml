@@ -41,7 +41,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Configure Git Identity
         run: |
@@ -111,12 +111,30 @@ jobs:
           git tag -fa "$BETA_TAG" -m "Beta Release $BETA_TAG - Crove Sign"
           git push origin "$BETA_TAG" --force
 
-          # 6. Create Pre-release on GitHub
-          echo "📦 Creating GitHub Pre-Release for $BETA_TAG..."
-          gh release create "$BETA_TAG" \
-            --title "Crove Sign $BETA_TAG" \
-            --prerelease \
-            --notes "Automated beta release synchronized from upstream Documenso $TARGET_TAG. Includes Crove Sign Enterprise Branding, Multi-language (Vietnamese) support, Hybrid Org Sync, and OIDC Authentication. Ready for Beta deployment." || true
+          # 6. Trigger the GHCR image builds explicitly.
+          # Pushes made with GITHUB_TOKEN do NOT trigger other workflows
+          # (GitHub blocks recursive runs), so build-docker.yml would never
+          # fire on its own - that is why beta images were never built.
+          # workflow_dispatch IS allowed from GITHUB_TOKEN, so dispatch the
+          # builds here. This only builds and pushes images to GHCR; there is
+          # NO deployment step - servers pull the image manually (no
+          # staging/blue-green automation in this fork by design).
+          echo "🐳 Dispatching GHCR image build for tag $BETA_TAG..."
+          gh workflow run build-docker.yml --ref "$BETA_TAG"
+          echo "🐳 Dispatching GHCR image build for dev branch..."
+          gh workflow run build-docker.yml --ref dev
+
+          # 7. Create Pre-release on GitHub (no silent failure: the previous
+          # `|| true` hid release-create errors for every beta so far).
+          echo "📦 Ensuring GitHub Pre-Release for $BETA_TAG..."
+          if gh release view "$BETA_TAG" >/dev/null 2>&1; then
+            echo "ℹ️ Release $BETA_TAG already exists; leaving it as-is."
+          else
+            gh release create "$BETA_TAG" \
+              --title "Crove Sign $BETA_TAG" \
+              --prerelease \
+              --notes "Automated beta release synchronized from upstream Documenso $TARGET_TAG. Includes Crove Sign Enterprise Branding, Multi-language (Vietnamese) support, Hybrid Org Sync, and OIDC Authentication. Image: ghcr.io/dos/crove-sign:$BETA_TAG (build dispatched - pull manually on the server; no auto-deploy)."
+          fi
 
           echo "synced=true" >> "$GITHUB_OUTPUT"
           echo "version_tag=$BETA_TAG" >> "$GITHUB_OUTPUT"

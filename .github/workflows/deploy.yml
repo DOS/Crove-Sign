@@ -1,9 +1,12 @@
 name: Deploy to Production
 
+# Fork policy: NO automated deployment. Servers pull the GHCR image built by
+# build-docker.yml manually (no staging / blue-green setup yet). This used to
+# run on every tag push and mirror main into a `release` branch; it is kept
+# for manual promotion only. Note: it requires a GH_TOKEN secret (PAT with
+# repo scope) which is not configured in this fork.
 on:
-  push:
-    tags:
-      - '*'
+  workflow_dispatch:
 
 jobs:
   deploy:
