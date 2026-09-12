@@ -1,26 +1,47 @@
-import { DeleteEmailIdentityCommand } from '@aws-sdk/client-sesv2';
-import { DOCUMENSO_ENCRYPTION_KEY } from '@documenso/lib/constants/crypto';
-import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
-import { symmetricDecrypt } from '@documenso/lib/universal/crypto';
 import { prisma } from '@documenso/prisma';
 import { EmailDomainStatus } from '@prisma/client';
 
-import { getSesClient, verifyDomainWithDKIM } from './create-email-domain';
+import { AppError, AppErrorCode } from '../../errors/app-error';
+import { logEmailDomainTransition } from './audit';
+import type { GeneratedDkimKeyPair } from './dkim-keys';
+import { generateDkimKeyPair } from './dkim-keys';
+import { assertEmailDomainEncryptionKey, encryptDkimPrivateKey } from './key-material';
+import { isPrismaConflictOn } from './prisma-conflict';
+import { assertSesServiceConfigured } from './ses-client';
+import { registerSesEmailIdentity } from './ses-identity';
+import { buildNegativeStreakKey, clearNegativeStreak } from './verification-state';
 
-type ReregisterEmailDomainOptions = {
+const MAX_REREGISTER_ATTEMPTS = 2;
+
+export type ReregisterEmailDomainOptions = {
   emailDomainId: string;
 };
 
-export const reregisterEmailDomain = async ({ emailDomainId }: ReregisterEmailDomainOptions) => {
-  const encryptionKey = DOCUMENSO_ENCRYPTION_KEY;
+/**
+ * Rotate a stalled domain's key material and hand the administrator a fresh set of
+ * records to publish (F5).
+ *
+ * The row id is preserved so that any `OrganisationEmail` addresses already
+ * created against the domain survive; only the selector, the key pair and the
+ * derived ownership challenge change. Calling it repeatedly is harmless — each
+ * call simply supersedes the previous rotation — which matters because the hourly
+ * sync job re-registers anything that has been PENDING for more than 48 hours.
+ */
+export const reregisterEmailDomain = async ({ emailDomainId }: ReregisterEmailDomainOptions): Promise<void> => {
+  assertSesServiceConfigured();
 
-  if (!encryptionKey) {
-    throw new Error('Missing DOCUMENSO_ENCRYPTION_KEY');
-  }
+  // Fails before anything is written when the rotated private key could not be
+  // stored encrypted.
+  assertEmailDomainEncryptionKey();
 
   const emailDomain = await prisma.emailDomain.findUnique({
-    where: {
-      id: emailDomainId,
+    where: { id: emailDomainId },
+    select: {
+      id: true,
+      domain: true,
+      selector: true,
+      status: true,
+      organisationId: true,
     },
   });
 
@@ -30,49 +51,55 @@ export const reregisterEmailDomain = async ({ emailDomainId }: ReregisterEmailDo
     });
   }
 
-  const sesClient = getSesClient();
+  let rotatedKeyPair: GeneratedDkimKeyPair | null = null;
 
-  if (sesClient) {
-    await sesClient
-      .send(
-        new DeleteEmailIdentityCommand({
-          EmailIdentity: emailDomain.domain,
-        }),
-      )
-      .catch((err) => {
-        if (err.name !== 'NotFoundException') {
-          console.warn('[Email Domain] Failed to delete existing SES identity during reregister:', err);
-        }
+  for (let attempt = 1; attempt <= MAX_REREGISTER_ATTEMPTS && rotatedKeyPair === null; attempt++) {
+    const keyPair = generateDkimKeyPair();
+
+    // SES is re-pointed before the row is touched: if signing cannot be
+    // reconfigured, the database keeps describing the key SES is actually using.
+    await registerSesEmailIdentity({
+      domain: emailDomain.domain,
+      selectorLabel: keyPair.selectorLabel,
+      privateKeyPem: keyPair.privateKeyPem,
+    });
+
+    try {
+      await prisma.emailDomain.update({
+        where: { id: emailDomain.id },
+        data: {
+          selector: keyPair.selector,
+          publicKey: keyPair.publicKeyFlattened,
+          privateKey: encryptDkimPrivateKey(keyPair.privateKeyPem),
+          status: EmailDomainStatus.PENDING,
+          lastVerifiedAt: null,
+        },
       });
+
+      rotatedKeyPair = keyPair;
+    } catch (error) {
+      if (!isPrismaConflictOn(error, 'selector')) {
+        throw error;
+      }
+    }
   }
 
-  const decryptedPrivateKeyBytes = symmetricDecrypt({
-    key: encryptionKey,
-    data: emailDomain.privateKey,
-  });
-
-  const decryptedPrivateKey = new TextDecoder().decode(decryptedPrivateKeyBytes);
-
-  const selectorParts = emailDomain.selector.split('._domainkey.');
-  const selector = selectorParts[0];
-
-  if (!selector) {
-    throw new AppError(AppErrorCode.UNKNOWN_ERROR, {
-      message: 'Could not extract selector from email domain record',
+  if (!rotatedKeyPair) {
+    throw new AppError(AppErrorCode.RETRY_EXCEPTION, {
+      message: 'Could not allocate a unique DKIM selector while re-registering the email domain.',
+      userMessage: 'We could not refresh this domain. Please try again.',
     });
   }
 
-  await verifyDomainWithDKIM(emailDomain.domain, selector, decryptedPrivateKey);
+  clearNegativeStreak(buildNegativeStreakKey({ emailDomainId: emailDomain.id, selector: emailDomain.selector }));
 
-  const updatedEmailDomain = await prisma.emailDomain.update({
-    where: {
-      id: emailDomainId,
-    },
-    data: {
-      status: EmailDomainStatus.PENDING,
-      lastVerifiedAt: new Date(),
-    },
+  logEmailDomainTransition({
+    event: 'reregistered',
+    emailDomainId: emailDomain.id,
+    organisationId: emailDomain.organisationId,
+    domain: emailDomain.domain,
+    previousStatus: emailDomain.status,
+    nextStatus: EmailDomainStatus.PENDING,
+    reason: 'DKIM key pair, selector and ownership challenge rotated',
   });
-
-  return updatedEmailDomain;
 };

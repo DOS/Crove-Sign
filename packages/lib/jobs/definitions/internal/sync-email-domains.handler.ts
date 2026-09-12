@@ -1,8 +1,8 @@
-// Use the lib (fork) implementations, not the EE originals: the fork's
-// getSesClient() returns null when SES is unconfigured and falls back to DNS
-// verification, while the EE versions throw - which made this job fail for
-// every pending domain on SES-less deployments while the manual "Verify"
-// button kept working.
+// Custom sending domains are an in-house feature and require Amazon SES: the
+// helpers below fail closed with NOT_SETUP when the NEXT_PRIVATE_SES_*
+// credentials are missing. On such an installation this job degrades to an
+// error count per pending domain (Promise.allSettled) instead of silently
+// reporting progress it never made.
 import { reregisterEmailDomain } from '@documenso/lib/server-only/email-domain/reregister-email-domain';
 import { verifyEmailDomain } from '@documenso/lib/server-only/email-domain/verify-email-domain';
 import { prisma } from '@documenso/prisma';

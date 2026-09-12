@@ -1,5 +1,5 @@
 import { useCurrentOrganisation } from '@documenso/lib/client-only/providers/organisation';
-import { IS_DOCUMENSO_CLOUD } from '@documenso/lib/constants/app';
+import { IS_DOCUMENSO_CLOUD, IS_SSO_PORTAL_ENABLED } from '@documenso/lib/constants/app';
 import { ORGANISATION_MEMBER_ROLE_HIERARCHY } from '@documenso/lib/constants/organisations';
 import { ORGANISATION_MEMBER_ROLE_MAP } from '@documenso/lib/constants/organisations-translations';
 import {
@@ -65,7 +65,7 @@ export default function OrganisationSettingSSOLoginPage() {
   const { t } = useLingui();
   const organisation = useCurrentOrganisation();
 
-  const isAuthenticationPortalEnabled = true;
+  const isAuthenticationPortalEnabled = IS_SSO_PORTAL_ENABLED();
 
   const { data: authenticationPortal, isLoading: isLoadingAuthenticationPortal } =
     trpc.enterprise.organisation.authenticationPortal.get.useQuery(
@@ -87,6 +87,27 @@ export default function OrganisationSettingSSOLoginPage() {
         />
 
         <SsoPortalUpsell />
+      </div>
+    );
+  }
+
+  // Self-hosted installations that turned the feature off get a plain notice
+  // instead of an upsell: the query below is disabled, so without this branch
+  // the page would render its loading state forever.
+  if (!isAuthenticationPortalEnabled) {
+    return (
+      <div>
+        <SettingsHeader
+          hideDivider
+          title={t`Organisation SSO Portal`}
+          subtitle={t`Manage a custom SSO login portal for your organisation.`}
+        />
+
+        <Alert>
+          <AlertDescription>
+            <Trans>Single sign-on is disabled on this installation.</Trans>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

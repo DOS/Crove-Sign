@@ -12,7 +12,7 @@ import { EmailDomainStatus, type OrganisationClaim, type OrganisationGlobalSetti
 import type { Transporter } from 'nodemailer';
 import { match, P } from 'ts-pattern';
 
-import { IS_BILLING_ENABLED } from '../../constants/app';
+import { IS_BILLING_ENABLED, IS_EMAIL_DOMAINS_ENABLED } from '../../constants/app';
 import { DOCUMENSO_INTERNAL_EMAIL } from '../../constants/email';
 import { AppError, AppErrorCode } from '../../errors/app-error';
 import { logger } from '../../utils/logger';
@@ -306,7 +306,10 @@ const getAllowedEmails = (
     organisationClaim: OrganisationClaim;
   },
 ) => {
-  if (!organisation.organisationClaim.flags.emailDomains) {
+  // The per-organisation claim flag is upstream's; the instance flag is ours.
+  // Both must allow custom senders, so an operator can switch the feature off
+  // with CROVE_FEATURE_EMAIL_DOMAINS=false instead of editing the database.
+  if (!IS_EMAIL_DOMAINS_ENABLED() || !organisation.organisationClaim.flags.emailDomains) {
     return [];
   }
 
