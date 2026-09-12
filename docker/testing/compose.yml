@@ -35,8 +35,11 @@ services:
       - ../../.env.example
     environment:
       - NEXTAUTH_SECRET=secret
-      - NEXT_PRIVATE_ENCRYPTION_KEY=CAFEBABE
-      - NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY=DEADBEEF
+      # Test-only values. Must satisfy the boot guard in
+      # packages/lib/constants/crypto.ts: at least 32 characters, not equal to
+      # each other, and not one of the published placeholders.
+      - NEXT_PRIVATE_ENCRYPTION_KEY=testing-only-encryption-key-0123456789
+      - NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY=testing-only-secondary-key-0123456789
       - NEXT_PRIVATE_DATABASE_URL=postgres://documenso:password@database:5432/documenso
       - NEXT_PRIVATE_DIRECT_DATABASE_URL=postgres://documenso:password@database:5432/documenso
       - NEXT_PUBLIC_UPLOAD_TRANSPORT=database
