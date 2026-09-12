@@ -1,5 +1,6 @@
 import { authClient } from '@documenso/auth/client';
 import { getOptionalSession } from '@documenso/auth/server/lib/utils/get-session';
+import { IS_SSO_PORTAL_ENABLED } from '@documenso/lib/constants/app';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
 import { prisma } from '@documenso/prisma';
 import { Button } from '@documenso/ui/primitives/button';
@@ -68,10 +69,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     },
   });
 
-  if (
-    !organisation ||
-    !organisation.organisationAuthenticationPortal.enabled
-  ) {
+  if (!IS_SSO_PORTAL_ENABLED() || !organisation || !organisation.organisationAuthenticationPortal.enabled) {
     throw new AppError(AppErrorCode.NOT_FOUND, {
       message: 'Organisation not found',
     });

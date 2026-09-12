@@ -1,6 +1,7 @@
-import { createEmailDomain } from '@documenso/lib/server-only/email-domain/create-email-domain';
+import { IS_EMAIL_DOMAINS_ENABLED } from '@documenso/lib/constants/app';
 import { ORGANISATION_MEMBER_ROLE_PERMISSIONS_MAP } from '@documenso/lib/constants/organisations';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import { createEmailDomain } from '@documenso/lib/server-only/email-domain/create-email-domain';
 import { buildOrganisationWhereQuery } from '@documenso/lib/utils/organisations';
 import { prisma } from '@documenso/prisma';
 
@@ -23,6 +24,12 @@ export const createOrganisationEmailDomainRoute = authenticatedProcedure
         domain,
       },
     });
+
+    if (!IS_EMAIL_DOMAINS_ENABLED()) {
+      throw new AppError(AppErrorCode.NOT_SETUP, {
+        message: 'Custom sending domains are disabled on this installation',
+      });
+    }
 
     const organisation = await prisma.organisation.findFirst({
       where: buildOrganisationWhereQuery({

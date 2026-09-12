@@ -1,5 +1,5 @@
 import { useCurrentOrganisation } from '@documenso/lib/client-only/providers/organisation';
-import { IS_BILLING_ENABLED, IS_DOCUMENSO_CLOUD } from '@documenso/lib/constants/app';
+import { IS_EMAIL_DOMAINS_ENABLED } from '@documenso/lib/constants/app';
 import { generateEmailDomainRecords } from '@documenso/lib/utils/email-domains';
 import { trpc } from '@documenso/trpc/react';
 import type { TGetOrganisationEmailDomainResponse } from '@documenso/trpc/server/enterprise-router/get-organisation-email-domain.types';
@@ -27,7 +27,6 @@ import { OrganisationEmailDomainRecordsDialog } from '~/components/dialogs/organ
 import { OrganisationEmailUpdateDialog } from '~/components/dialogs/organisation-email-update-dialog';
 import { GenericErrorLayout } from '~/components/general/generic-error-layout';
 import { SettingsHeader } from '~/components/general/settings-header';
-import { EmailDomainsUpsell } from '~/components/general/settings-upsell/email-domains-upsell';
 
 import type { Route } from './+types/o.$orgUrl.settings.email-domains.$id';
 
@@ -99,6 +98,20 @@ export default function OrganisationEmailDomainSettingsPage({ params }: Route.Co
 
   const pageHeader = t`Email Domain Settings`;
   const pageSubtitle = t`Manage your email domain settings.`;
+
+  if (!IS_EMAIL_DOMAINS_ENABLED()) {
+    return (
+      <div>
+        <SettingsHeader hideDivider title={pageHeader} subtitle={pageSubtitle} />
+
+        <Alert className="mt-8" variant="neutral">
+          <AlertDescription>
+            <Trans>Custom sending domains are disabled on this installation.</Trans>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   if (isLoadingEmailDomain) {
     return <SpinnerBox className="py-32" />;

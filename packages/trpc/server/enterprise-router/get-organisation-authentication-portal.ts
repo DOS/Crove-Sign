@@ -1,3 +1,4 @@
+import { IS_SSO_PORTAL_ENABLED } from '@documenso/lib/constants/app';
 import { ORGANISATION_MEMBER_ROLE_PERMISSIONS_MAP } from '@documenso/lib/constants/organisations';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
 import { buildOrganisationWhereQuery } from '@documenso/lib/utils/organisations';
@@ -36,6 +37,12 @@ export const getOrganisationAuthenticationPortal = async ({
   userId,
   organisationId,
 }: GetOrganisationAuthenticationPortalOptions) => {
+  if (!IS_SSO_PORTAL_ENABLED()) {
+    throw new AppError(AppErrorCode.NOT_SETUP, {
+      message: 'The organisation SSO portal is disabled on this installation',
+    });
+  }
+
   const organisation = await prisma.organisation.findFirst({
     where: buildOrganisationWhereQuery({
       organisationId,
