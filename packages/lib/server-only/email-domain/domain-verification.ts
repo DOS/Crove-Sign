@@ -35,7 +35,9 @@ export type CheckDomainDnsConfigurationOptions = {
  */
 export const hasAuthorisingSpfRecord = (records: string[][]): boolean => {
   return records.some((chunks) => {
-    const tokens = flattenTxtRecord(chunks).split(/\s+/);
+    // Trim first: a leading space would make the first token an empty string
+    // and the `v=spf1` test below would silently fail.
+    const tokens = flattenTxtRecord(chunks).trim().split(/\s+/);
     const isSpfRecord = (tokens.at(0) ?? '').toLowerCase() === 'v=spf1';
 
     return isSpfRecord && tokens.slice(1).some((token) => SES_SPF_MECHANISMS.has(token.toLowerCase()));

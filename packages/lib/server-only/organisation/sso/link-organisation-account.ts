@@ -315,6 +315,10 @@ export const linkOrganisationAccount = async ({
         organisationId: organisation.id,
         organisationGroups: organisation.groups,
         organisationMemberRole,
+        // The user arrived by clicking a link we emailed seconds ago, so the
+        // "member joined" notification carries no new information and only adds
+        // a job that can fail after the token has already been consumed.
+        bypassEmail: true,
       });
     }
 

@@ -111,8 +111,9 @@ export const sendOrganisationAccountLinkConfirmationEmail = async ({
   });
 
   // `getEmailContext` is authoritative on whether an organisation may send mail
-  // at all. Issuing a link nobody can receive would leave the user waiting on an
-  // email that was never sent, so nothing is persisted in that case.
+  // at all. Fail loudly rather than returning quietly: the caller redirects the
+  // browser to a "verification required" page either way, so a silent return
+  // would leave the user waiting on an email that was never sent.
   if (emailsDisabled) {
     logger.warn({
       msg: 'Skipped organisation account link confirmation, organisation emails are disabled',
@@ -120,7 +121,11 @@ export const sendOrganisationAccountLinkConfirmationEmail = async ({
       organisationId,
     });
 
-    return;
+    throw new AppError(AppErrorCode.NOT_SETUP, {
+      message: 'Emails are disabled for this organisation, unable to send the account link confirmation',
+      userMessage:
+        'Single sign-on is unavailable for this organisation because email is disabled. Please contact your administrator.',
+    });
   }
 
   const token = createOrganisationAccountLinkToken();

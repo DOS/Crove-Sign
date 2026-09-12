@@ -318,6 +318,9 @@ describe('linkOrganisationAccount', () => {
       organisationId: ORGANISATION_ID,
       organisationGroups: buildGroups(),
       organisationMemberRole: OrganisationMemberRole.MANAGER,
+      // The confirmation email the user just clicked makes the "member joined"
+      // notification redundant, and it would run after the token is consumed.
+      bypassEmail: true,
     });
 
     const [accountUpsertArgs] = mocks.accountUpsert.mock.calls[0] as unknown as [AccountUpsertArgs];

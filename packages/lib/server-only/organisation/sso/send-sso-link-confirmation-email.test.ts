@@ -245,7 +245,7 @@ describe('sendOrganisationAccountLinkConfirmationEmail', () => {
     expect(JSON.stringify(auditArgs.data)).not.toContain(getCreatedTokenArgs().data.token);
   });
 
-  it('issues nothing when the organisation is not allowed to send email', async () => {
+  it('fails loudly when the organisation is not allowed to send email', async () => {
     mocks.getEmailContext.mockResolvedValue({
       branding: { brandingEnabled: false },
       emailLanguage: 'en-US',
@@ -254,7 +254,9 @@ describe('sendOrganisationAccountLinkConfirmationEmail', () => {
       emailTransport: { sendMail: mocks.sendMail },
     });
 
-    await expect(sendOrganisationAccountLinkConfirmationEmail(buildOptions('link'))).resolves.toBeUndefined();
+    await expect(sendOrganisationAccountLinkConfirmationEmail(buildOptions('link'))).rejects.toMatchObject({
+      code: AppErrorCode.NOT_SETUP,
+    });
 
     expect(mocks.verificationTokenCreate).not.toHaveBeenCalled();
     expect(mocks.sendMail).not.toHaveBeenCalled();
