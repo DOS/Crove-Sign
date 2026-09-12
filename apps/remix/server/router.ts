@@ -1,6 +1,7 @@
 import { tsRestHonoApp } from '@documenso/api/hono';
 import { auth } from '@documenso/auth/server';
 import { csc } from '@documenso/ee/server-only/signing/csc/hono';
+import { assertEncryptionKeysConfigured } from '@documenso/lib/constants/crypto';
 import { jobsClient } from '@documenso/lib/jobs/client';
 import { LicenseClient } from '@documenso/lib/server-only/license/license-client';
 import { createRateLimitMiddleware } from '@documenso/lib/server-only/rate-limit/rate-limit-middleware';
@@ -40,6 +41,13 @@ import { reactRouterTrpcServer } from './trpc/hono-trpc-remix';
 // load-context.ts. server/main.js imports getLoadContext from the rolled-up
 // output to wire it into the React Router adapter.
 export { getLoadContext } from './load-context';
+
+// Refuse to serve traffic with encryption keys that are missing, still set to a
+// published placeholder, or too short to survive an offline attack. Everything
+// this app describes as encrypted at rest - DKIM private keys, SSO client
+// secrets, account-link tokens - depends on these two values, and a weak key
+// cannot be detected after data has already been written with it.
+assertEncryptionKeysConfigured();
 
 export interface HonoEnv {
   Variables: RequestIdVariables & {
