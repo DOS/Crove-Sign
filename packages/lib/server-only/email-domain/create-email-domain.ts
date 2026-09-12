@@ -1,154 +1,238 @@
-import { CreateEmailIdentityCommand, SESv2Client } from '@aws-sdk/client-sesv2';
-import { DOCUMENSO_ENCRYPTION_KEY } from '@documenso/lib/constants/crypto';
-import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
-import { symmetricEncrypt } from '@documenso/lib/universal/crypto';
-import { generateDatabaseId } from '@documenso/lib/universal/id';
-import { generateEmailDomainRecords } from '@documenso/lib/utils/email-domains';
-import { env } from '@documenso/lib/utils/env';
 import { prisma } from '@documenso/prisma';
+import type { EmailDomain, OrganisationEmail } from '@prisma/client';
 import { EmailDomainStatus } from '@prisma/client';
-import { generateKeyPair } from 'node:crypto';
-import { promisify } from 'node:util';
 
-export const getSesClient = () => {
-  const accessKeyId = env('NEXT_PRIVATE_SES_ACCESS_KEY_ID');
-  const secretAccessKey = env('NEXT_PRIVATE_SES_SECRET_ACCESS_KEY');
-  const region = env('NEXT_PRIVATE_SES_REGION');
+import { AppError, AppErrorCode } from '../../errors/app-error';
+import type { TEmailDomain } from '../../types/email-domain';
+import { generateDatabaseId } from '../../universal/id';
+import { logger } from '../../utils/logger';
+import { logEmailDomainTransition } from './audit';
+import type { GeneratedDkimKeyPair } from './dkim-keys';
+import { generateDkimKeyPair } from './dkim-keys';
+import { buildEmailDomainDnsRecords } from './dns-records';
+import { resolveDomainClaim } from './domain-claim';
+import { assertDomainIsClaimable } from './domain-policy';
+import { assertEmailDomainEncryptionKey, encryptDkimPrivateKey } from './key-material';
+import { deriveOwnershipChallengeToken } from './ownership-challenge';
+import { isPrismaConflictOn } from './prisma-conflict';
+import { assertSesServiceConfigured } from './ses-client';
+import { registerSesEmailIdentity } from './ses-identity';
+import type { EmailDomainDnsRecord } from './types';
 
-  if (!accessKeyId || !secretAccessKey || !region) {
-    return null;
-  }
+/**
+ * A selector carries 62 bits of randomness, so a collision is not a realistic
+ * event — but the column is globally unique, so the insert has to cope with one
+ * rather than surfacing a database error to an administrator.
+ */
+const MAX_ROW_INSERT_ATTEMPTS = 2;
 
-  return new SESv2Client({
-    region,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-  });
+type PersistedEmailDomain = EmailDomain & { emails: OrganisationEmail[] };
+
+type AllocatedEmailDomain = {
+  emailDomain: PersistedEmailDomain;
+  keyPair: GeneratedDkimKeyPair;
+  ownershipChallengeToken: string;
 };
-
-const flattenKey = (key: string) => {
-  return key.trim().split('\n').slice(1, -1).join('');
-};
-
-export async function verifyDomainWithDKIM(domain: string, selector: string, privateKey: string) {
-  const sesClient = getSesClient();
-
-  if (!sesClient) {
-    // If AWS SES credentials are not set, return without error
-    return null;
-  }
-
-  const command = new CreateEmailIdentityCommand({
-    EmailIdentity: domain,
-    DkimSigningAttributes: {
-      DomainSigningSelector: selector,
-      DomainSigningPrivateKey: privateKey,
-    },
-  });
-
-  return await sesClient.send(command);
-}
 
 export type CreateEmailDomainOptions = {
+  /**
+   * Already lowercased and regex-validated by the tRPC layer; re-normalised and
+   * re-checked here for every other caller.
+   */
   domain: string;
   organisationId: string;
 };
 
-export type DomainRecord = {
-  name: string;
-  value: string;
-  type: string;
+export type CreateEmailDomainResult = {
+  emailDomain: TEmailDomain;
+  records: EmailDomainDnsRecord[];
 };
 
-export const createEmailDomain = async ({ domain, organisationId }: CreateEmailDomainOptions) => {
-  const encryptionKey = DOCUMENSO_ENCRYPTION_KEY;
+/**
+ * Project a row onto the public response contract.
+ *
+ * Done field by field rather than by spreading so that the encrypted DKIM private
+ * key can never ride along inside an object that happens to carry one.
+ */
+const toEmailDomainResponse = (emailDomain: PersistedEmailDomain): TEmailDomain => {
+  return {
+    id: emailDomain.id,
+    status: emailDomain.status,
+    organisationId: emailDomain.organisationId,
+    domain: emailDomain.domain,
+    selector: emailDomain.selector,
+    publicKey: emailDomain.publicKey,
+    createdAt: emailDomain.createdAt,
+    updatedAt: emailDomain.updatedAt,
+    lastVerifiedAt: emailDomain.lastVerifiedAt,
+    emails: emailDomain.emails.map((email) => ({
+      id: email.id,
+      createdAt: email.createdAt,
+      updatedAt: email.updatedAt,
+      email: email.email,
+      emailName: email.emailName,
+      emailDomainId: email.emailDomainId,
+      organisationId: email.organisationId,
+    })),
+  };
+};
 
-  if (!encryptionKey) {
-    throw new Error('Missing DOCUMENSO_ENCRYPTION_KEY');
-  }
-
-  const cleanDomain = domain.toLowerCase().trim();
-  const selector = `crove-${organisationId}`.replace(/[_.]/g, '-');
-  const recordName = `${selector}._domainkey.${cleanDomain}`;
-
-  // Check if domain already exists in database
-  const existingDomain = await prisma.emailDomain.findUnique({
-    where: {
-      domain: cleanDomain,
-    },
-  });
-
-  if (existingDomain) {
-    throw new AppError(AppErrorCode.ALREADY_EXISTS, {
-      message: 'Domain already exists in database',
+const insertEmailDomainRow = async ({
+  emailDomainId,
+  organisationId,
+  domain,
+  keyPair,
+  encryptedPrivateKey,
+}: {
+  emailDomainId: string;
+  organisationId: string;
+  domain: string;
+  keyPair: GeneratedDkimKeyPair;
+  encryptedPrivateKey: string;
+}): Promise<PersistedEmailDomain | null> => {
+  try {
+    return await prisma.emailDomain.create({
+      data: {
+        id: emailDomainId,
+        status: EmailDomainStatus.PENDING,
+        organisationId,
+        domain,
+        selector: keyPair.selector,
+        publicKey: keyPair.publicKeyFlattened,
+        privateKey: encryptedPrivateKey,
+      },
+      include: { emails: true },
     });
-  }
-
-  // Generate 2048-bit RSA DKIM key pair
-  const generateKeyPairAsync = promisify(generateKeyPair);
-
-  const { publicKey, privateKey } = await generateKeyPairAsync('rsa', {
-    modulusLength: 2048,
-    publicKeyEncoding: {
-      type: 'spki',
-      format: 'pem',
-    },
-    privateKeyEncoding: {
-      type: 'pkcs8',
-      format: 'pem',
-    },
-  });
-
-  const publicKeyFlattened = flattenKey(publicKey);
-  const privateKeyFlattened = flattenKey(privateKey);
-
-  // Generate DNS records for user to add to their DNS provider
-  const records: DomainRecord[] = generateEmailDomainRecords(recordName, publicKeyFlattened);
-
-  const encryptedPrivateKey = symmetricEncrypt({
-    key: encryptionKey,
-    data: privateKeyFlattened,
-  });
-
-  // Verify domain with SES if configured
-  await verifyDomainWithDKIM(cleanDomain, selector, privateKeyFlattened).catch((err) => {
-    if (err.name === 'AlreadyExistsException') {
+  } catch (error) {
+    // Claiming the globally unique domain here is what closes the race between
+    // the pre-flight claim check and the insert.
+    if (isPrismaConflictOn(error, 'domain')) {
       throw new AppError(AppErrorCode.ALREADY_EXISTS, {
-        message: 'Domain already exists in SES',
+        message: 'The domain was registered while this request was being processed.',
+        userMessage: 'This domain is already in use.',
       });
     }
 
-    console.warn('[Email Domain] AWS SES identity creation warning:', err?.message || err);
+    if (isPrismaConflictOn(error, 'selector')) {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+const allocateEmailDomain = async ({
+  emailDomainId,
+  organisationId,
+  domain,
+  encryptionKey,
+}: {
+  emailDomainId: string;
+  organisationId: string;
+  domain: string;
+  encryptionKey: string;
+}): Promise<AllocatedEmailDomain | null> => {
+  for (let attempt = 1; attempt <= MAX_ROW_INSERT_ATTEMPTS; attempt++) {
+    const keyPair = generateDkimKeyPair();
+    const ownershipChallengeToken = deriveOwnershipChallengeToken(
+      { emailDomainId, selector: keyPair.selector, domain },
+      encryptionKey,
+    );
+
+    const emailDomain = await insertEmailDomainRow({
+      emailDomainId,
+      organisationId,
+      domain,
+      keyPair,
+      encryptedPrivateKey: encryptDkimPrivateKey(keyPair.privateKeyPem),
+    });
+
+    if (emailDomain) {
+      return { emailDomain, keyPair, ownershipChallengeToken };
+    }
+  }
+
+  return null;
+};
+
+const releaseFailedRegistration = async (emailDomainId: string): Promise<void> => {
+  try {
+    await prisma.emailDomain.delete({
+      where: { id: emailDomainId },
+    });
+  } catch (rollbackError) {
+    logger.error({
+      msg: 'email_domain_registration_rollback_failed',
+      emailDomainId,
+      error: rollbackError,
+    });
+  }
+};
+
+/**
+ * Register a domain an organisation may send mail from (F1, F2).
+ *
+ * The row is written before SES is called so that the globally unique domain is
+ * claimed atomically; if SES then refuses, the row is removed again, so a domain
+ * is never left behind that could not send.
+ */
+export const createEmailDomain = async ({
+  domain,
+  organisationId,
+}: CreateEmailDomainOptions): Promise<CreateEmailDomainResult> => {
+  assertSesServiceConfigured();
+
+  const encryptionKey = assertEmailDomainEncryptionKey();
+  const normalisedDomain = assertDomainIsClaimable(domain);
+
+  await resolveDomainClaim({ domain: normalisedDomain, organisationId });
+
+  const emailDomainId = generateDatabaseId('email_domain');
+
+  const allocation = await allocateEmailDomain({
+    emailDomainId,
+    organisationId,
+    domain: normalisedDomain,
+    encryptionKey,
   });
 
-  const emailDomain = await prisma.emailDomain.create({
-    data: {
-      id: generateDatabaseId('email_domain'),
-      domain: cleanDomain,
-      status: EmailDomainStatus.PENDING,
-      organisationId,
-      selector: recordName,
-      publicKey: publicKeyFlattened,
-      privateKey: encryptedPrivateKey,
-    },
-    select: {
-      id: true,
-      status: true,
-      organisationId: true,
-      domain: true,
-      selector: true,
-      publicKey: true,
-      createdAt: true,
-      updatedAt: true,
-      lastVerifiedAt: true,
-      emails: true,
-    },
+  if (!allocation) {
+    throw new AppError(AppErrorCode.RETRY_EXCEPTION, {
+      message: 'Could not allocate a unique DKIM selector for the email domain.',
+      userMessage: 'We could not set up this domain. Please try again.',
+    });
+  }
+
+  const { emailDomain, keyPair, ownershipChallengeToken } = allocation;
+
+  try {
+    await registerSesEmailIdentity({
+      domain: normalisedDomain,
+      selectorLabel: keyPair.selectorLabel,
+      privateKeyPem: keyPair.privateKeyPem,
+    });
+  } catch (error) {
+    await releaseFailedRegistration(emailDomainId);
+
+    throw error;
+  }
+
+  logEmailDomainTransition({
+    event: 'created',
+    emailDomainId: emailDomain.id,
+    organisationId,
+    domain: normalisedDomain,
+    previousStatus: null,
+    nextStatus: EmailDomainStatus.PENDING,
+    reason: 'Domain registered and awaiting DNS configuration',
   });
 
   return {
-    emailDomain,
-    records,
+    emailDomain: toEmailDomainResponse(emailDomain),
+    records: buildEmailDomainDnsRecords({
+      selector: keyPair.selector,
+      publicKeyFlattened: keyPair.publicKeyFlattened,
+      ownershipChallengeToken,
+    }),
   };
 };
