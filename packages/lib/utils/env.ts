@@ -56,6 +56,11 @@ export const createPublicEnv = () => ({
   // Derived from the private transport so the client can detect CSC mode for
   // authoring UI gating without exposing the raw transport value.
   NEXT_PUBLIC_SIGNING_TRANSPORT_IS_CSC: process.env.NEXT_PRIVATE_SIGNING_TRANSPORT === 'csc' ? 'true' : 'false',
+  // Derived from the private instance flags for the in-house enterprise
+  // features, so client-side navigation cannot drift from what the server will
+  // actually allow.
+  NEXT_PUBLIC_FEATURE_EMAIL_DOMAINS_ENABLED: process.env.CROVE_FEATURE_EMAIL_DOMAINS !== 'false' ? 'true' : 'false',
+  NEXT_PUBLIC_FEATURE_SSO_PORTAL_ENABLED: process.env.CROVE_FEATURE_SSO_PORTAL !== 'false' ? 'true' : 'false',
   // Derived from the private Vertex credentials so the client can gate AI
   // feature UI on a boolean.
   NEXT_PUBLIC_AI_FEATURES_ENABLED:

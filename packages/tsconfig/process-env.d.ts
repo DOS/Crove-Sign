@@ -140,5 +140,19 @@ declare namespace NodeJS {
     GOOGLE_VERTEX_API_KEY?: string;
     GOOGLE_VERTEX_SERVICE_ACCOUNT_KEY?: string;
     GOOGLE_VERTEX_USE_ADC?: string;
+
+    /**
+     * In-house feature flags for the custom sending domain and organisation SSO
+     * portal features. Both default to enabled; set to `false` to switch a
+     * feature off instance-wide.
+     */
+    CROVE_FEATURE_EMAIL_DOMAINS?: 'true' | 'false';
+    CROVE_FEATURE_SSO_PORTAL?: 'true' | 'false';
+    /**
+     * Derived from the two flags above in `createPublicEnv()`; do not set
+     * manually. Lets client-side navigation match what the API will allow.
+     */
+    NEXT_PUBLIC_FEATURE_EMAIL_DOMAINS_ENABLED?: 'true' | 'false';
+    NEXT_PUBLIC_FEATURE_SSO_PORTAL_ENABLED?: 'true' | 'false';
   }
 }

@@ -54,6 +54,35 @@ export const NEXT_PRIVATE_INTERNAL_WEBAPP_URL = () =>
 export const IS_BILLING_ENABLED = () => env('NEXT_PUBLIC_FEATURE_BILLING_ENABLED') === 'true';
 
 /**
+ * Custom sending domains are implemented in-house, so this installation gates
+ * them with its own flag instead of an upstream licence claim. Enabled unless
+ * the variable is explicitly `false`.
+ *
+ * Platform-aware like {@link IS_AI_FEATURES_CONFIGURED}: the server reads the
+ * private variable, the client reads the public flag derived from it in
+ * `createPublicEnv` so the navigation cannot advertise what the API will refuse.
+ */
+export const IS_EMAIL_DOMAINS_ENABLED = (): boolean => {
+  if (typeof window === 'undefined') {
+    return env('CROVE_FEATURE_EMAIL_DOMAINS') !== 'false';
+  }
+
+  return env('NEXT_PUBLIC_FEATURE_EMAIL_DOMAINS_ENABLED') !== 'false';
+};
+
+/**
+ * The organisation SSO portal is implemented in-house and gated the same way as
+ * {@link IS_EMAIL_DOMAINS_ENABLED}.
+ */
+export const IS_SSO_PORTAL_ENABLED = (): boolean => {
+  if (typeof window === 'undefined') {
+    return env('CROVE_FEATURE_SSO_PORTAL') !== 'false';
+  }
+
+  return env('NEXT_PUBLIC_FEATURE_SSO_PORTAL_ENABLED') !== 'false';
+};
+
+/**
  * Whether this instance is Documenso Cloud (managed SaaS).
  *
  * Used so we can show a different UI for Documenso Cloud and self-hosted instances since
