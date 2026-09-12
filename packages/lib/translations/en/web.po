@@ -32,6 +32,23 @@ msgstr "\"{0}\" will appear on the document as it has a timezone of \"{1}\"."
 msgid "\"{documentName}\" has been deleted by an admin."
 msgstr "\"{documentName}\" has been deleted by an admin."
 
+#: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.email-domains.$id.tsx
+#: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.email-domains._index.tsx
+msgid "Custom sending domains are disabled on this installation."
+msgstr "Custom sending domains are disabled on this installation."
+
+#: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.sso.tsx
+msgid "Single sign-on is disabled on this installation."
+msgstr "Single sign-on is disabled on this installation."
+
+#: packages/lib/server-only/organisation/sso/send-sso-link-confirmation-email.ts
+msgid "{organisationName} requested to create your Documenso account"
+msgstr "{organisationName} requested to create your Crove Sign account"
+
+#: packages/lib/server-only/organisation/sso/send-sso-link-confirmation-email.ts
+msgid "{organisationName} requested to link your Documenso account"
+msgstr "{organisationName} requested to link your Crove Sign account"
+
 #: packages/email/template-components/template-document-pending.tsx
 msgid "“{documentName}” has been signed"
 msgstr "“{documentName}” has been signed"
