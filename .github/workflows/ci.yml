@@ -50,3 +50,36 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           tags: documenso-${{ github.sha }}
+
+  unit_tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # The crypto helpers read these at import time. The values only need to
+      # satisfy the boot guard's shape; they protect nothing in CI.
+      NEXT_PRIVATE_ENCRYPTION_KEY: ci-only-primary-key-0123456789abcdef
+      NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ci-only-secondary-key-0123456789
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: ./.github/actions/node-install
+
+      - name: Run unit tests
+        run: npm run test -w @documenso/lib
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/node-install
+
+      - name: Biome
+        run: npm run lint
