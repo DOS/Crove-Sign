@@ -164,6 +164,7 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
 
         <SignInForm
           isEmailPasswordSigninEnabled={isEmailPasswordSigninEnabled || isBreakGlassRequested}
+          showForgotPasswordLink={!isBreakGlassRequested || isEmailPasswordSigninEnabled}
           isGoogleSSOEnabled={isGoogleSSOEnabled}
           isMicrosoftSSOEnabled={isMicrosoftSSOEnabled}
           isOIDCSSOEnabled={isOIDCSSOEnabled}

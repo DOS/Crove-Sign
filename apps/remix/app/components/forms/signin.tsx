@@ -65,6 +65,12 @@ export type SignInFormProps = {
   isOIDCSSOEnabled?: boolean;
   oidcProviderLabel?: string;
   returnTo?: string;
+  /**
+   * Hide when the password form is only reachable via the break-glass door:
+   * the forgot-password flow stays disabled suite-wide in that mode, so the
+   * link would dead-end.
+   */
+  showForgotPasswordLink?: boolean;
 };
 
 export const SignInForm = ({
@@ -76,6 +82,7 @@ export const SignInForm = ({
   isOIDCSSOEnabled,
   oidcProviderLabel,
   returnTo,
+  showForgotPasswordLink = true,
 }: SignInFormProps) => {
   const { _ } = useLingui();
   const { toast } = useToast();
@@ -362,14 +369,16 @@ export const SignInForm = ({
 
                     <FormMessage />
 
-                    <p className="mt-2 text-right">
-                      <Link
-                        to="/forgot-password"
-                        className="text-muted-foreground text-sm duration-200 hover:opacity-70"
-                      >
-                        <Trans>Forgot your password?</Trans>
-                      </Link>
-                    </p>
+                    {showForgotPasswordLink && (
+                      <p className="mt-2 text-right">
+                        <Link
+                          to="/forgot-password"
+                          className="text-muted-foreground text-sm duration-200 hover:opacity-70"
+                        >
+                          <Trans>Forgot your password?</Trans>
+                        </Link>
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />
