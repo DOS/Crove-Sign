@@ -114,7 +114,7 @@ async function main() {
   console.log(`\n🔀 Merging upstream release ${targetTag} into ${currentBranch}...`);
   try {
     runCmd(`git merge ${targetTag} --no-edit -m "chore(sync): merge upstream Documenso release ${targetTag}"`);
-  } catch (err) {
+  } catch (_err) {
     console.error(
       `\n❌ Conflict encountered while merging ${targetTag}. Please resolve conflicts, run 'npm run patch:branding', and commit.`,
     );

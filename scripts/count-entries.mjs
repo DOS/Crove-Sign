@@ -12,7 +12,9 @@ const content = fs.readFileSync(enPoPath, 'utf-8');
 const lines = content.split('\n');
 let count = 0;
 for (const line of lines) {
-  if (line.startsWith('msgid ')) count++;
+  if (line.startsWith('msgid ')) {
+    count++;
+  }
 }
 
 console.log('Total msgid count:', count);

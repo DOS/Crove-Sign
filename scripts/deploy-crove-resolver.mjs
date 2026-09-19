@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, '..');
+const _ROOT_DIR = path.resolve(__dirname, '..');
 
 // ==========================================
 // 1. NETWORK CONFIGURATION & CONSTANTS
@@ -45,7 +45,7 @@ const NETWORKS = {
 const CROVE_SCHEMA_V2 =
   'bytes32 envelopeHash, bytes32 artifactRoot, bytes32 auditBundleRoot, bytes32 identityEvidenceRoot, bytes32 riskEvidenceRoot, bytes32 policyHash, uint16 evidenceVersion, uint8 eventType';
 
-async function main() {
+function main() {
   console.log('\n=====================================================================');
   console.log('🚀 Crove Sign - EAS Gateway & Resolver Deployment Guide (DOS Chain)');
   console.log('=====================================================================\n');
@@ -94,7 +94,9 @@ async function main() {
   console.log('⏳ Connecting to RPC and executing deployment...');
 }
 
-main().catch((err) => {
+try {
+  main();
+} catch (err) {
   console.error('❌ Deployment error:', err);
   process.exit(1);
-});
+}

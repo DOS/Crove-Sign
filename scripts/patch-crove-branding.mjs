@@ -165,7 +165,7 @@ function patchWebManifests() {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    fs.writeFileSync(manifestPath, JSON.stringify(manifestData, null, 2) + '\n', 'utf-8');
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifestData, null, 2)}\n`, 'utf-8');
     console.log(`   ✓ Updated manifest: ${manifestPath}`);
   }
   console.log('   ✅ Finished updating PWA manifests.\n');

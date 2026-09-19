@@ -4,7 +4,7 @@ import type { MDXComponents } from 'mdx/types';
 import { EnvelopeWarning } from '@/components/mdx/envelope-warning';
 import { Mermaid } from '@/components/mdx/mermaid';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: MDX component map typing mirrors upstream documenso
 export function getMDXComponents(components?: MDXComponents): any {
   return {
     ...defaultMdxComponents,

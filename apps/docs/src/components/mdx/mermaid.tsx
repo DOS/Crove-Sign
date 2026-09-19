@@ -62,5 +62,6 @@ const MermaidContent = ({ chart }: { chart: string }) => {
     return null;
   }
 
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: renders the SVG produced by mermaid.render() in the browser, not user-controlled HTML
   return <div ref={containerRef} dangerouslySetInnerHTML={{ __html: svg }} />;
 };
