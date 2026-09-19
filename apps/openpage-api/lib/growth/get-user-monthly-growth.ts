@@ -12,6 +12,7 @@ export const getUserMonthlyGrowth = async (type: 'count' | 'cumulative' = 'count
       fn
         .sum(fn.count('id'))
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: Kysely window-function orderBy cannot be expressed type-safely (upstream workaround)
         .over((ob) => ob.orderBy(fn('DATE_TRUNC', [sql.lit('MONTH'), 'User.createdAt']) as any))
         .as('cume_count'),
     ])

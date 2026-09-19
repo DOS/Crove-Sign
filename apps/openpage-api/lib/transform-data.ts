@@ -38,7 +38,7 @@ export function transformData({ data, metric }: { data: DataEntry; metric: Metri
         const [yearA, monthA] = dateA.split('-').map(Number);
         const [yearB, monthB] = dateB.split('-').map(Number);
 
-        if (isNaN(yearA) || isNaN(monthA) || isNaN(yearB) || isNaN(monthB)) {
+        if (Number.isNaN(yearA) || Number.isNaN(monthA) || Number.isNaN(yearB) || Number.isNaN(monthB)) {
           console.warn(`Invalid date format: ${dateA} or ${dateB}`);
           return 0;
         }
@@ -54,7 +54,7 @@ export function transformData({ data, metric }: { data: DataEntry; metric: Metri
       try {
         const [year, month] = date.split('-');
 
-        if (!year || !month || isNaN(Number(year)) || isNaN(Number(month))) {
+        if (!year || !month || Number.isNaN(Number(year)) || Number.isNaN(Number(month))) {
           console.warn(`Invalid date format: ${date}`);
           return date;
         }
@@ -83,14 +83,14 @@ export function transformData({ data, metric }: { data: DataEntry; metric: Metri
           label: `Total ${FRIENDLY_METRIC_NAMES[metric]}`,
           data: sortedEntries.map(([_, stats]) => {
             const value = stats[metric];
-            return typeof value === 'number' && !isNaN(value) ? value : 0;
+            return typeof value === 'number' && !Number.isNaN(value) ? value : 0;
           }),
         },
       ],
     };
 
     return addZeroMonth(transformedData, true);
-  } catch (error) {
+  } catch {
     return {
       labels: [],
       datasets: [{ label: `Total ${FRIENDLY_METRIC_NAMES[metric]}`, data: [] }],
