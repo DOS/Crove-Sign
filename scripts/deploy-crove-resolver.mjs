@@ -10,7 +10,6 @@
  *   node scripts/deploy-crove-resolver.mjs [--network=dos-testnet|dos-mainnet] [--dry-run]
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -64,8 +63,12 @@ async function main() {
   console.log(`📜 Schema v2 Definition : "${CROVE_SCHEMA_V2}"\n`);
 
   console.log('📋 Contract Architecture & Deliverables:');
-  console.log('   - CroveAnchorGateway : contracts/gateway/CroveAnchorGateway.sol (Anti-replay, Relayer Access Control, Multi-PDF batching)');
-  console.log('   - CroveResolver      : contracts/resolver/CroveResolver.sol (Reverse lookup: artifactRoot -> UID[], envelopeHash -> UID[])');
+  console.log(
+    '   - CroveAnchorGateway : contracts/gateway/CroveAnchorGateway.sol (Anti-replay, Relayer Access Control, Multi-PDF batching)',
+  );
+  console.log(
+    '   - CroveResolver      : contracts/resolver/CroveResolver.sol (Reverse lookup: artifactRoot -> UID[], envelopeHash -> UID[])',
+  );
   console.log('   - EAS Base Resolver  : contracts/resolver/SchemaResolver.sol');
   console.log('   - EAS Interfaces     : contracts/interfaces/IEAS.sol, ISchemaResolver.sol');
   console.log('   - TypeScript ABI     : packages/lib/server-only/blockchain/resolver-abi.ts\n');
@@ -76,11 +79,15 @@ async function main() {
     console.log('   $env:DEPLOYER_PRIVATE_KEY="<KEY>"; node scripts/deploy-crove-resolver.mjs --network=dos-testnet\n');
     console.log('📌 Ordered Deployment Pipeline:');
     console.log('   Step 1: Deploy CroveResolver(easAddress, ownerAddress, address(0))');
-    console.log('   Step 2: Register Schema v2 on SchemaRegistry.register(schema, croveResolverAddress, revocable=false)');
+    console.log(
+      '   Step 2: Register Schema v2 on SchemaRegistry.register(schema, croveResolverAddress, revocable=false)',
+    );
     console.log('   Step 3: Deploy CroveAnchorGateway(easAddress, ownerAddress, croveRelayerAddress, schemaUID)');
     console.log('   Step 4: Configure CroveResolver.setTrustedGateway(croveAnchorGatewayAddress)');
     console.log('   Step 5: Configure CroveResolver.setSchemaUID(schemaUID)');
-    console.log('   Step 6: Update CROVE_ANCHOR_GATEWAY_ADDRESS and CROVE_RESOLVER_ADDRESS in .env & docs/ARCHITECTURE.md\n');
+    console.log(
+      '   Step 6: Update CROVE_ANCHOR_GATEWAY_ADDRESS and CROVE_RESOLVER_ADDRESS in .env & docs/ARCHITECTURE.md\n',
+    );
     return;
   }
 
