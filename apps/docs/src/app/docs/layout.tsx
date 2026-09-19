@@ -35,13 +35,13 @@ const ROOT_SECTIONS = [
 ];
 
 // Find first page item in folder children
-function getFirstPageUrl(children: PageTree.Node[]): string | undefined {
+function _getFirstPageUrl(children: PageTree.Node[]): string | undefined {
   for (const child of children) {
     if (child.type === 'page') {
       return child.url;
     }
     if (child.type === 'folder' && child.children.length > 0) {
-      const url = getFirstPageUrl(child.children);
+      const url = _getFirstPageUrl(child.children);
       if (url) {
         return url;
       }

@@ -5,7 +5,7 @@ const withMDX = createMDX();
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
-  async rewrites() {
+  rewrites() {
     return [
       {
         source: '/docs/:path*.mdx',
@@ -13,7 +13,7 @@ const config = {
       },
     ];
   },
-  async redirects() {
+  redirects() {
     return [
       // ============================================================
       // Legacy docs site redirects (old site had no /docs prefix)

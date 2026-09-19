@@ -70,7 +70,7 @@ function getAllowedHeaders(req: Request, allowed?: string | string[]) {
   const headers = new Headers();
 
   if (!allowed) {
-    allowed = req.headers.get('Access-Control-Request-Headers')!;
+    allowed = req.headers.get('Access-Control-Request-Headers') ?? undefined;
     headers.append('Vary', 'Access-Control-Request-Headers');
   } else if (Array.isArray(allowed)) {
     allowed = allowed.join(',');

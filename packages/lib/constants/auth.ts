@@ -34,6 +34,31 @@ export const OIDC_PROVIDER_LABEL = env('NEXT_PRIVATE_OIDC_PROVIDER_LABEL');
  */
 export const IS_OIDC_AUTO_REDIRECT_DISABLED = env('NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT') === 'true';
 
+/**
+ * Break-glass password signin allowlist for redirect-only OIDC deployments.
+ *
+ * When email/password signin is disabled suite-wide (redirect-only DOS ID
+ * login), these comma-separated admin emails keep a manual password escape
+ * hatch reachable via `/signin?direct=1`, for use when the OIDC provider is
+ * unreachable. Regular users have no password path.
+ */
+export const getBreakGlassEmails = (): string[] => {
+  const emails = env('NEXT_PRIVATE_BREAK_GLASS_EMAILS');
+
+  if (!emails) {
+    return [];
+  }
+
+  return emails
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+};
+
+export const isBreakGlassSigninEnabled = () => getBreakGlassEmails().length > 0;
+
+export const isBreakGlassEmail = (email: string) => getBreakGlassEmails().includes(email.trim().toLowerCase());
+
 export const USER_SECURITY_AUDIT_LOG_MAP: Record<string, string> = {
   ACCOUNT_SSO_LINK: 'Linked account to SSO',
   ACCOUNT_SSO_UNLINK: 'Unlinked account from SSO',
@@ -131,7 +156,7 @@ export const isEmailDomainAllowedForSignup = (email: string): boolean => {
  * pre-normalised (trimmed + lowercased) by the caller.
  *
  * Returns `true` when the email is disposable and should be rejected.
- * Email format validation is intentionally NOT performed here — that is
+ * Email format validation is intentionally NOT performed here; that is
  * handled by Zod upstream.
  */
 export const isDisposableEmail = (email: string, additionalBlockedDomains: string[] = []): boolean => {

@@ -14,6 +14,7 @@ export const getCompletedDocumentsMonthly = async (type: 'count' | 'cumulative' 
         .sum(fn.count('id'))
         // Feels like a bug in the Kysely extension but I just can not do this orderBy in a type-safe manner
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: Kysely window-function orderBy cannot be expressed type-safely (upstream workaround)
         .over((ob) => ob.orderBy(fn('DATE_TRUNC', [sql.lit('MONTH'), 'Envelope.updatedAt']) as any))
         .as('cume_count'),
     ])

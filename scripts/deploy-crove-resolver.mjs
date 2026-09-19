@@ -10,13 +10,12 @@
  *   node scripts/deploy-crove-resolver.mjs [--network=dos-testnet|dos-mainnet] [--dry-run]
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, '..');
+const _ROOT_DIR = path.resolve(__dirname, '..');
 
 // ==========================================
 // 1. NETWORK CONFIGURATION & CONSTANTS
@@ -46,7 +45,7 @@ const NETWORKS = {
 const CROVE_SCHEMA_V2 =
   'bytes32 envelopeHash, bytes32 artifactRoot, bytes32 auditBundleRoot, bytes32 identityEvidenceRoot, bytes32 riskEvidenceRoot, bytes32 policyHash, uint16 evidenceVersion, uint8 eventType';
 
-async function main() {
+function main() {
   console.log('\n=====================================================================');
   console.log('🚀 Crove Sign - EAS Gateway & Resolver Deployment Guide (DOS Chain)');
   console.log('=====================================================================\n');
@@ -64,8 +63,12 @@ async function main() {
   console.log(`📜 Schema v2 Definition : "${CROVE_SCHEMA_V2}"\n`);
 
   console.log('📋 Contract Architecture & Deliverables:');
-  console.log('   - CroveAnchorGateway : contracts/gateway/CroveAnchorGateway.sol (Anti-replay, Relayer Access Control, Multi-PDF batching)');
-  console.log('   - CroveResolver      : contracts/resolver/CroveResolver.sol (Reverse lookup: artifactRoot -> UID[], envelopeHash -> UID[])');
+  console.log(
+    '   - CroveAnchorGateway : contracts/gateway/CroveAnchorGateway.sol (Anti-replay, Relayer Access Control, Multi-PDF batching)',
+  );
+  console.log(
+    '   - CroveResolver      : contracts/resolver/CroveResolver.sol (Reverse lookup: artifactRoot -> UID[], envelopeHash -> UID[])',
+  );
   console.log('   - EAS Base Resolver  : contracts/resolver/SchemaResolver.sol');
   console.log('   - EAS Interfaces     : contracts/interfaces/IEAS.sol, ISchemaResolver.sol');
   console.log('   - TypeScript ABI     : packages/lib/server-only/blockchain/resolver-abi.ts\n');
@@ -76,18 +79,24 @@ async function main() {
     console.log('   $env:DEPLOYER_PRIVATE_KEY="<KEY>"; node scripts/deploy-crove-resolver.mjs --network=dos-testnet\n');
     console.log('📌 Ordered Deployment Pipeline:');
     console.log('   Step 1: Deploy CroveResolver(easAddress, ownerAddress, address(0))');
-    console.log('   Step 2: Register Schema v2 on SchemaRegistry.register(schema, croveResolverAddress, revocable=false)');
+    console.log(
+      '   Step 2: Register Schema v2 on SchemaRegistry.register(schema, croveResolverAddress, revocable=false)',
+    );
     console.log('   Step 3: Deploy CroveAnchorGateway(easAddress, ownerAddress, croveRelayerAddress, schemaUID)');
     console.log('   Step 4: Configure CroveResolver.setTrustedGateway(croveAnchorGatewayAddress)');
     console.log('   Step 5: Configure CroveResolver.setSchemaUID(schemaUID)');
-    console.log('   Step 6: Update CROVE_ANCHOR_GATEWAY_ADDRESS and CROVE_RESOLVER_ADDRESS in .env & docs/ARCHITECTURE.md\n');
+    console.log(
+      '   Step 6: Update CROVE_ANCHOR_GATEWAY_ADDRESS and CROVE_RESOLVER_ADDRESS in .env & docs/ARCHITECTURE.md\n',
+    );
     return;
   }
 
   console.log('⏳ Connecting to RPC and executing deployment...');
 }
 
-main().catch((err) => {
+try {
+  main();
+} catch (err) {
   console.error('❌ Deployment error:', err);
   process.exit(1);
-});
+}

@@ -1,4 +1,5 @@
 import {
+  isBreakGlassEmail,
   isDisposableEmail,
   isEmailDomainAllowedForSignup,
   isSigninEnabledForProvider,
@@ -65,13 +66,16 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
   .post('/authorize', sValidator('json', ZSignInSchema), async (c) => {
     const requestMetadata = c.get('requestMetadata');
 
-    if (!isSigninEnabledForProvider('email')) {
+    const { email, password, totpCode, backupCode, csrfToken, captchaToken } = c.req.valid('json');
+
+    // Break-glass: when password signin is disabled suite-wide, allowlisted
+    // admin emails (see NEXT_PRIVATE_BREAK_GLASS_EMAILS) may still sign in
+    // via /signin?direct=1 while the OIDC provider is unreachable.
+    if (!isSigninEnabledForProvider('email') && !isBreakGlassEmail(email)) {
       throw new AppError(AuthenticationErrorCode.SigninDisabled, {
         statusCode: 400,
       });
     }
-
-    const { email, password, totpCode, backupCode, csrfToken, captchaToken } = c.req.valid('json');
 
     const loginLimitResult = await loginRateLimit.check({
       ip: requestMetadata.ipAddress ?? 'unknown',

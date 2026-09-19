@@ -153,7 +153,7 @@ test('[USER] password reset invalidates all sessions', async ({ page }: { page: 
   await page.context().addCookies(initialCookies);
 
   await page.goto('http://localhost:3000/settings/profile');
-  await expect(page).toHaveURL('http://localhost:3000/signin');
+  await expect(page).toHaveURL(/^http:\/\/localhost:3000\/signin/);
 
   expect(await checkSessionValid(page)).toBe(false);
 
@@ -209,7 +209,7 @@ test('[USER] password update invalidates other sessions but keeps current', asyn
   await page.context().clearCookies();
   await page.context().addCookies(initialCookies);
   await page.goto('http://localhost:3000/settings/profile');
-  await expect(page).toHaveURL('http://localhost:3000/signin');
+  await expect(page).toHaveURL(/^http:\/\/localhost:3000\/signin/);
   expect(await checkSessionValid(page)).toBe(false);
 
   await page.context().clearCookies();

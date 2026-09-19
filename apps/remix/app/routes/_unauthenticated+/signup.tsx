@@ -1,13 +1,19 @@
+import { authClient } from '@documenso/auth/client';
+import { getOptionalSession } from '@documenso/auth/server/lib/utils/get-session';
 import {
   IS_GOOGLE_SSO_ENABLED,
   IS_MICROSOFT_SSO_ENABLED,
+  IS_OIDC_AUTO_REDIRECT_DISABLED,
   IS_OIDC_SSO_ENABLED,
   isSignupEnabledForProvider,
   OIDC_PROVIDER_LABEL,
 } from '@documenso/lib/constants/auth';
 import { isValidReturnTo, normalizeReturnTo } from '@documenso/lib/utils/is-valid-return-to';
 import { msg } from '@lingui/core/macro';
-import { redirect } from 'react-router';
+import { Trans } from '@lingui/react/macro';
+import { Loader2Icon } from 'lucide-react';
+import { useEffect } from 'react';
+import { redirect, useSearchParams } from 'react-router';
 
 import { SignUpForm } from '~/components/forms/signup';
 import { appMetaTags } from '~/utils/meta';
@@ -18,7 +24,9 @@ export function meta() {
   return appMetaTags(msg`Sign Up`);
 }
 
-export function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
+  const { isAuthenticated } = await getOptionalSession(request);
+
   const isEmailPasswordSignupEnabled = isSignupEnabledForProvider('email');
   const isGoogleSignupEnabled = IS_GOOGLE_SSO_ENABLED && isSignupEnabledForProvider('google');
   const isMicrosoftSignupEnabled = IS_MICROSOFT_SSO_ENABLED && isSignupEnabledForProvider('microsoft');
@@ -32,9 +40,20 @@ export function loader({ request }: Route.LoaderArgs) {
     throw redirect('/signin');
   }
 
+  // For DOS ID the signup and signin flows are the same OIDC round-trip, so
+  // when OIDC is the only enabled signup transport we redirect automatically.
+  const isOIDCSignupOnlyTransport =
+    isOidcSignupEnabled && !isEmailPasswordSignupEnabled && !isGoogleSignupEnabled && !isMicrosoftSignupEnabled;
+
+  const shouldAutoRedirectToOIDC = isOIDCSignupOnlyTransport && !IS_OIDC_AUTO_REDIRECT_DISABLED;
+
   let returnTo = new URL(request.url).searchParams.get('returnTo') ?? undefined;
 
   returnTo = isValidReturnTo(returnTo) ? normalizeReturnTo(returnTo) : undefined;
+
+  if (isAuthenticated && shouldAutoRedirectToOIDC) {
+    throw redirect(returnTo || '/');
+  }
 
   return {
     isEmailPasswordSignupEnabled,
@@ -43,6 +62,7 @@ export function loader({ request }: Route.LoaderArgs) {
     isOidcSignupEnabled,
     oidcProviderLabel,
     returnTo,
+    shouldAutoRedirectToOIDC,
   };
 }
 
@@ -54,7 +74,39 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
     isOidcSignupEnabled,
     oidcProviderLabel,
     returnTo,
+    shouldAutoRedirectToOIDC,
   } = loaderData;
+
+  const [searchParams] = useSearchParams();
+
+  // Suppress the automatic redirect when the user asked for the manual form
+  // via ?direct=1, or when a previous OIDC attempt bounced back with an error
+  // (avoids a redirect loop).
+  const isDirectEntry = searchParams.get('direct') === '1';
+  const hasIdpError = searchParams.get('error') !== null;
+
+  const shouldRedirectToOIDC = shouldAutoRedirectToOIDC && !isDirectEntry && !hasIdpError;
+
+  useEffect(() => {
+    if (!shouldRedirectToOIDC) {
+      return;
+    }
+
+    void authClient.oidc.signIn({ redirectPath: returnTo ?? '/' });
+  }, [shouldRedirectToOIDC, returnTo]);
+
+  if (shouldRedirectToOIDC) {
+    return (
+      <div className="w-screen max-w-lg px-4">
+        <div className="flex flex-col items-center justify-center gap-y-4 py-12">
+          <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground text-sm">
+            <Trans>Redirecting to {oidcProviderLabel || 'OIDC'}...</Trans>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SignUpForm

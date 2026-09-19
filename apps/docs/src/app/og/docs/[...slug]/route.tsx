@@ -68,6 +68,7 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* biome-ignore lint/performance/noImgElement: OG image route renders a raw logo bitmap outside the Next Image context */}
         <img src={logoSrc} alt="Documenso" height="28" />
         <span
           style={{

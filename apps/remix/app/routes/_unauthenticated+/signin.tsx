@@ -5,6 +5,7 @@ import {
   IS_MICROSOFT_SSO_ENABLED,
   IS_OIDC_AUTO_REDIRECT_DISABLED,
   IS_OIDC_SSO_ENABLED,
+  isBreakGlassSigninEnabled,
   isSigninEnabledForProvider,
   isSignupEnabledForProvider,
   OIDC_PROVIDER_LABEL,
@@ -44,6 +45,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const shouldAutoRedirectToOIDC = isOIDCOnlyTransport && !IS_OIDC_AUTO_REDIRECT_DISABLED;
 
+  // Break-glass escape hatch: when password signin is disabled suite-wide,
+  // allowlisted admins can still reach the password form via ?direct=1.
+  const isBreakGlassAvailable = isBreakGlassSigninEnabled();
+
   const oidcProviderLabel = OIDC_PROVIDER_LABEL;
 
   const isSignupEnabled =
@@ -66,6 +71,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     isMicrosoftSSOEnabled,
     isOIDCSSOEnabled,
     isSignupEnabled,
+    isBreakGlassAvailable,
     oidcProviderLabel,
     returnTo,
     shouldAutoRedirectToOIDC,
@@ -79,6 +85,7 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
     isMicrosoftSSOEnabled,
     isOIDCSSOEnabled,
     isSignupEnabled,
+    isBreakGlassAvailable,
     oidcProviderLabel,
     returnTo,
     shouldAutoRedirectToOIDC,
@@ -92,6 +99,16 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
   const errorParam = searchParams.get('error');
   const signupError = errorParam ? SIGNUP_ERROR_MESSAGES[errorParam] : undefined;
 
+  // Suppress the automatic IdP redirect when the user has explicitly asked
+  // for the break-glass form, when the IdP bounced us back with an error
+  // (otherwise we would restart the OIDC dance in a loop), or when embedded
+  // in a signing widget.
+  const isBreakGlassRequested = searchParams.get('direct') === '1' && isBreakGlassAvailable;
+  const hasIdpError = errorParam !== null;
+
+  const shouldRedirectToOIDC =
+    shouldAutoRedirectToOIDC && !isBreakGlassRequested && !hasIdpError && !isEmbeddedRedirect;
+
   useEffect(() => {
     const hash = window.location.hash.slice(1);
 
@@ -101,14 +118,20 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
   }, []);
 
   useEffect(() => {
-    if (!shouldAutoRedirectToOIDC) {
+    if (!shouldRedirectToOIDC) {
+      return;
+    }
+
+    // Guard against the initial render racing the embedded detection above:
+    // read the hash synchronously so embedded contexts never bounce to the IdP.
+    if (new URLSearchParams(window.location.hash.slice(1)).get('embedded') === 'true') {
       return;
     }
 
     void authClient.oidc.signIn({ redirectPath: returnTo ?? '/' });
-  }, [shouldAutoRedirectToOIDC, returnTo]);
+  }, [shouldRedirectToOIDC, returnTo]);
 
-  if (shouldAutoRedirectToOIDC) {
+  if (shouldRedirectToOIDC) {
     return (
       <div className="w-screen max-w-lg px-4">
         <div className="flex flex-col items-center justify-center gap-y-4 py-12">
@@ -140,7 +163,8 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
         <hr className="-mx-6 my-4" />
 
         <SignInForm
-          isEmailPasswordSigninEnabled={isEmailPasswordSigninEnabled}
+          isEmailPasswordSigninEnabled={isEmailPasswordSigninEnabled || isBreakGlassRequested}
+          showForgotPasswordLink={!isBreakGlassRequested || isEmailPasswordSigninEnabled}
           isGoogleSSOEnabled={isGoogleSSOEnabled}
           isMicrosoftSSOEnabled={isMicrosoftSSOEnabled}
           isOIDCSSOEnabled={isOIDCSSOEnabled}

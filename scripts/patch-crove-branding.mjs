@@ -87,7 +87,9 @@ function patchTranslationCatalogs() {
 
   for (const locale of localeDirs) {
     const poFilePath = path.join(translationsDir, locale, 'web.po');
-    if (!fs.existsSync(poFilePath)) continue;
+    if (!fs.existsSync(poFilePath)) {
+      continue;
+    }
 
     let content = fs.readFileSync(poFilePath, 'utf-8');
     const originalContent = content;
@@ -159,9 +161,11 @@ function patchWebManifests() {
 
   for (const manifestPath of manifestPaths) {
     const dir = path.dirname(manifestPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
 
-    fs.writeFileSync(manifestPath, JSON.stringify(manifestData, null, 2) + '\n', 'utf-8');
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifestData, null, 2)}\n`, 'utf-8');
     console.log(`   ✓ Updated manifest: ${manifestPath}`);
   }
   console.log('   ✅ Finished updating PWA manifests.\n');
@@ -249,7 +253,15 @@ export const BrandingLogo = ({ className = 'h-6 w-auto', ...props }: LogoProps) 
   console.log(`   ✓ Created/updated logo component: ${brandingLogoPath}`);
 
   // 3. Branding Logo Icon Component
-  const brandingIconPath = path.join(ROOT_DIR, 'apps', 'remix', 'app', 'components', 'general', 'branding-logo-icon.tsx');
+  const brandingIconPath = path.join(
+    ROOT_DIR,
+    'apps',
+    'remix',
+    'app',
+    'components',
+    'general',
+    'branding-logo-icon.tsx',
+  );
   const brandingIconContent = `import type { SVGAttributes } from 'react';
 
 export type LogoProps = SVGAttributes<SVGSVGElement>;
