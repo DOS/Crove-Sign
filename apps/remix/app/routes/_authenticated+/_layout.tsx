@@ -4,6 +4,7 @@ import { OrganisationProvider } from '@documenso/lib/client-only/providers/organ
 import { useSession } from '@documenso/lib/client-only/providers/session';
 import { getSiteSettings } from '@documenso/lib/server-only/site-settings/get-site-settings';
 import { SITE_SETTINGS_BANNER_ID } from '@documenso/lib/server-only/site-settings/schemas/banner';
+import { isValidReturnTo, normalizeReturnTo } from '@documenso/lib/utils/is-valid-return-to';
 import { cn } from '@documenso/ui/lib/utils';
 import { Button } from '@documenso/ui/primitives/button';
 import { msg } from '@lingui/core/macro';
@@ -34,6 +35,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
 
   if (!session.isAuthenticated) {
+    // Preserve the originally requested path (including query string) so the
+    // OIDC login round-trip lands back on the page the user wanted.
+    const requestUrl = new URL(request.url);
+    const returnTo = `${requestUrl.pathname}${requestUrl.search}`;
+
+    if (isValidReturnTo(returnTo)) {
+      throw redirect(`/signin?returnTo=${encodeURIComponent(normalizeReturnTo(returnTo) ?? returnTo)}`);
+    }
+
     throw redirect('/signin');
   }
 

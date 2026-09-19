@@ -130,6 +130,18 @@ User -> Browser               Crove Sign (App)             DOS.Me ID (Supabase A
      │<── Redirect to /inbox ────────┤                                     │
 ```
 
+### 4.3. Redirect-Only Mode & Break-Glass
+
+When email/password signin and signup are disabled (`NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNIN/SIGNUP=true`) and OIDC is the only enabled transport, `/signin` and `/signup` skip the button page entirely and auto-redirect to the OIDC provider (opt out with `NEXT_PUBLIC_DISABLE_OIDC_AUTO_REDIRECT=true`). The automatic redirect is suppressed when:
+
+- The IdP bounced the user back with `?error=...` (prevents a redirect loop; the error alert and a manual retry button are shown instead).
+- The URL carries `#embedded=true` (embedded signing widgets must not bounce to the IdP).
+- The URL carries `?direct=1` and the break-glass allowlist is configured.
+
+**Break-glass** (`NEXT_PRIVATE_BREAK_GLASS_EMAILS`, comma-separated admin emails): with password signin disabled suite-wide, allowlisted admins keep a manual password escape hatch via `/signin?direct=1` for use when the OIDC provider is unreachable. The allowlist is enforced server-side in `POST /api/auth/email-password/authorize` (non-allowlisted emails still receive `SigninDisabled`), so the credential-stuffing surface stays limited to the admin emails. Regular users have no password path.
+
+Deep links are preserved end to end: unauthenticated access to authenticated routes redirects to `/signin?returnTo=<original path+query>`, and `returnTo` is validated (`isValidReturnTo`) and carried through the OIDC round-trip back to the original page.
+
 ---
 
 ## 5. Crove OS 2-Tier Hybrid Architecture & Data Sync
