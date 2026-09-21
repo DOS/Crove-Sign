@@ -95,6 +95,7 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
 
   const [searchParams] = useSearchParams();
   const [isEmbeddedRedirect, setIsEmbeddedRedirect] = useState(false);
+  const [isRedirectFailed, setIsRedirectFailed] = useState(false);
 
   const errorParam = searchParams.get('error');
   const signupError = errorParam ? SIGNUP_ERROR_MESSAGES[errorParam] : undefined;
@@ -128,10 +129,14 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    void authClient.oidc.signIn({ redirectPath: returnTo ?? '/' });
+    authClient.oidc.signIn({ redirectPath: returnTo ?? '/' }).catch(() => {
+      // Fall back to the manual form (retry button, break-glass door) instead
+      // of leaving the user on the spinner forever when the IdP is unreachable.
+      setIsRedirectFailed(true);
+    });
   }, [shouldRedirectToOIDC, returnTo]);
 
-  if (shouldRedirectToOIDC) {
+  if (shouldRedirectToOIDC && !isRedirectFailed) {
     return (
       <div className="w-screen max-w-lg px-4">
         <div className="flex flex-col items-center justify-center gap-y-4 py-12">

@@ -12,7 +12,7 @@ import { isValidReturnTo, normalizeReturnTo } from '@documenso/lib/utils/is-vali
 import { msg } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import { Loader2Icon } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { redirect, useSearchParams } from 'react-router';
 
 import { SignUpForm } from '~/components/forms/signup';
@@ -78,6 +78,7 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
   } = loaderData;
 
   const [searchParams] = useSearchParams();
+  const [isRedirectFailed, setIsRedirectFailed] = useState(false);
 
   // Suppress the automatic redirect when the user asked for the manual form
   // via ?direct=1, or when a previous OIDC attempt bounced back with an error
@@ -92,10 +93,20 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    void authClient.oidc.signIn({ redirectPath: returnTo ?? '/' });
+    // Embedded signing widgets must not bounce to the IdP; read the hash
+    // synchronously to match the guard on the signin route.
+    if (new URLSearchParams(window.location.hash.slice(1)).get('embedded') === 'true') {
+      return;
+    }
+
+    authClient.oidc.signIn({ redirectPath: returnTo ?? '/' }).catch(() => {
+      // Fall back to the manual form instead of leaving the user on the
+      // spinner forever when the IdP is unreachable.
+      setIsRedirectFailed(true);
+    });
   }, [shouldRedirectToOIDC, returnTo]);
 
-  if (shouldRedirectToOIDC) {
+  if (shouldRedirectToOIDC && !isRedirectFailed) {
     return (
       <div className="w-screen max-w-lg px-4">
         <div className="flex flex-col items-center justify-center gap-y-4 py-12">
