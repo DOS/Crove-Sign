@@ -79,6 +79,7 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
 
   const [searchParams] = useSearchParams();
   const [isRedirectFailed, setIsRedirectFailed] = useState(false);
+  const [isEmbeddedRedirect, setIsEmbeddedRedirect] = useState(false);
 
   // Suppress the automatic redirect when the user asked for the manual form
   // via ?direct=1, or when a previous OIDC attempt bounced back with an error
@@ -86,15 +87,21 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
   const isDirectEntry = searchParams.get('direct') === '1';
   const hasIdpError = searchParams.get('error') !== null;
 
-  const shouldRedirectToOIDC = shouldAutoRedirectToOIDC && !isDirectEntry && !hasIdpError;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+
+    setIsEmbeddedRedirect(params.get('embedded') === 'true');
+  }, []);
+
+  const shouldRedirectToOIDC = shouldAutoRedirectToOIDC && !isDirectEntry && !hasIdpError && !isEmbeddedRedirect;
 
   useEffect(() => {
     if (!shouldRedirectToOIDC) {
       return;
     }
 
-    // Embedded signing widgets must not bounce to the IdP; read the hash
-    // synchronously to match the guard on the signin route.
+    // Guard against the initial render racing the embedded detection above:
+    // read the hash synchronously so embedded contexts never bounce to the IdP.
     if (new URLSearchParams(window.location.hash.slice(1)).get('embedded') === 'true') {
       return;
     }
