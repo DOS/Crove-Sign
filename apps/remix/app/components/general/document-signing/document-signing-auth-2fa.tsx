@@ -11,12 +11,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { Trans } from '@lingui/react/macro';
-import { ArrowLeftIcon, KeyIcon, MailIcon, RotateCwIcon } from 'lucide-react';
+import { KeyIcon, MailIcon, RotateCwIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-
-import { EnableAuthenticatorAppDialog } from '~/components/forms/2fa/enable-authenticator-app-dialog';
 
 import { useRequiredDocumentSigningAuthContext } from './document-signing-auth-provider';
 
@@ -89,9 +87,7 @@ export const DocumentSigningAuth2FA = ({
 
       toast({
         title: _(msg`Verification Code Sent`),
-        description: _(
-          msg`A 6-digit verification code has been sent to ${recipient.email}. Please check your inbox.`,
-        ),
+        description: _(msg`A 6-digit verification code has been sent to ${recipient.email}. Please check your inbox.`),
       });
     } catch (err) {
       setIsSendingEmail(false);
@@ -146,12 +142,12 @@ export const DocumentSigningAuth2FA = ({
     <div className="space-y-4">
       {/* Method switcher if user has both options */}
       {user?.twoFactorEnabled && (
-        <div className="flex rounded-lg border p-1 bg-muted/30">
+        <div className="flex rounded-lg border bg-muted/30 p-1">
           <Button
             type="button"
             variant={selectedMethod === 'authenticator' ? 'default' : 'ghost'}
             size="sm"
-            className="flex-1 text-xs gap-1.5"
+            className="flex-1 gap-1.5 text-xs"
             onClick={() => {
               setSelectedMethod('authenticator');
               setFormErrorCode(null);
@@ -165,7 +161,7 @@ export const DocumentSigningAuth2FA = ({
             type="button"
             variant={selectedMethod === 'email' ? 'default' : 'ghost'}
             size="sm"
-            className="flex-1 text-xs gap-1.5"
+            className="flex-1 gap-1.5 text-xs"
             onClick={() => {
               setSelectedMethod('email');
               setFormErrorCode(null);
@@ -192,7 +188,7 @@ export const DocumentSigningAuth2FA = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs gap-1"
+                className="h-7 gap-1 text-xs"
                 loading={isSendingEmail}
                 onClick={sendEmailOtp}
               >
@@ -238,7 +234,9 @@ export const DocumentSigningAuth2FA = ({
                         <Trans>Verification Failed</Trans>
                       </AlertTitle>
                       <AlertDescription>
-                        <Trans>The code you entered is invalid or expired. Please check your email or click Resend Code.</Trans>
+                        <Trans>
+                          The code you entered is invalid or expired. Please check your email or click Resend Code.
+                        </Trans>
                       </AlertDescription>
                     </Alert>
                   )}
@@ -294,7 +292,9 @@ export const DocumentSigningAuth2FA = ({
                       <Trans>Unauthorized</Trans>
                     </AlertTitle>
                     <AlertDescription>
-                      <Trans>We were unable to verify your authenticator code. Please try again or switch to Email OTP.</Trans>
+                      <Trans>
+                        We were unable to verify your authenticator code. Please try again or switch to Email OTP.
+                      </Trans>
                     </AlertDescription>
                   </Alert>
                 )}

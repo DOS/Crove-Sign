@@ -33,7 +33,9 @@ export type DosWebhookPayload = {
   [key: string]: unknown;
 };
 
-export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise<{ success: boolean; message: string }> => {
+export const handleDosWebhookEvent = async (
+  payload: DosWebhookPayload,
+): Promise<{ success: boolean; message: string }> => {
   const event = (payload.event || '').toLowerCase();
   const data = (payload.data && typeof payload.data === 'object' ? payload.data : payload) as Record<string, unknown>;
 
@@ -95,10 +97,7 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
 
       const org = await prisma.organisation.findFirst({
         where: {
-          OR: [
-            ...(orgId ? [{ id: orgId }] : []),
-            ...(slug ? [{ url: slug }] : []),
-          ],
+          OR: [...(orgId ? [{ id: orgId }] : []), ...(slug ? [{ url: slug }] : [])],
         },
       });
 
@@ -124,10 +123,7 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
 
       const org = await prisma.organisation.findFirst({
         where: {
-          OR: [
-            ...(orgId ? [{ id: orgId }] : []),
-            ...(slug ? [{ url: slug }] : []),
-          ],
+          OR: [...(orgId ? [{ id: orgId }] : []), ...(slug ? [{ url: slug }] : [])],
         },
         include: {
           teams: { select: { id: true } },
@@ -188,8 +184,7 @@ export const handleDosWebhookEvent = async (payload: DosWebhookPayload): Promise
 
       const orgRole = mapDosRoleToOrgRole(role);
       const targetGroup = org.groups.find(
-        (group) =>
-          group.type === OrganisationGroupType.INTERNAL_ORGANISATION && group.organisationRole === orgRole,
+        (group) => group.type === OrganisationGroupType.INTERNAL_ORGANISATION && group.organisationRole === orgRole,
       );
 
       const existingMember = await prisma.organisationMember.findUnique({

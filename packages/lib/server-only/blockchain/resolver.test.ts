@@ -1,11 +1,7 @@
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
-import {
-  CROVE_ANCHOR_GATEWAY_ABI,
-  CROVE_EAS_SCHEMA_V2,
-  CROVE_RESOLVER_ABI,
-} from './resolver-abi';
+import { CROVE_ANCHOR_GATEWAY_ABI, CROVE_EAS_SCHEMA_V2, CROVE_RESOLVER_ABI } from './resolver-abi';
 
 describe('CroveAttestationResolver ABI & Schema Contract', () => {
   it('should export the standard Crove Sign EAS schema v2', () => {
@@ -15,9 +11,7 @@ describe('CroveAttestationResolver ABI & Schema Contract', () => {
   });
 
   it('should include all required view functions for reverse lookup in the resolver ABI', () => {
-    const functionNames = CROVE_RESOLVER_ABI
-      .filter((item) => item.type === 'function')
-      .map((item) => item.name);
+    const functionNames = CROVE_RESOLVER_ABI.filter((item) => item.type === 'function').map((item) => item.name);
 
     expect(functionNames).toContain('getAttestationsByArtifactRoot');
     expect(functionNames).toContain('getAttestationsByEnvelopeHash');
@@ -32,18 +26,14 @@ describe('CroveAttestationResolver ABI & Schema Contract', () => {
   });
 
   it('should include the anchoring entrypoints and the indexing event in the gateway ABI', () => {
-    const functionNames = CROVE_ANCHOR_GATEWAY_ABI
-      .filter((item) => item.type === 'function')
-      .map((item) => item.name);
+    const functionNames = CROVE_ANCHOR_GATEWAY_ABI.filter((item) => item.type === 'function').map((item) => item.name);
 
     expect(functionNames).toContain('anchorEnvelope');
     expect(functionNames).toContain('batchAnchorEnvelopes');
     expect(functionNames).toContain('authorizedRelayers');
     expect(functionNames).toContain('anchorKeyToUID');
 
-    const eventNames = CROVE_ANCHOR_GATEWAY_ABI
-      .filter((item) => item.type === 'event')
-      .map((item) => item.name);
+    const eventNames = CROVE_ANCHOR_GATEWAY_ABI.filter((item) => item.type === 'event').map((item) => item.name);
 
     expect(eventNames).toContain('EnvelopeAnchored');
   });
@@ -81,14 +71,10 @@ describe('CroveAttestationResolver ABI & Schema Contract', () => {
 
     const components = payloadInput.components ?? [];
 
-    expect(components.map((component) => component.name)).toEqual(
-      schemaFields.map((field) => field.name),
-    );
+    expect(components.map((component) => component.name)).toEqual(schemaFields.map((field) => field.name));
 
     // uint16/uint8 value types line up; bytes32 vs the schema's value types.
-    expect(components.map((component) => component.type)).toEqual(
-      schemaFields.map((field) => field.type),
-    );
+    expect(components.map((component) => component.type)).toEqual(schemaFields.map((field) => field.type));
   });
 
   it('should correctly simulate reverse lookup mapping logic', () => {

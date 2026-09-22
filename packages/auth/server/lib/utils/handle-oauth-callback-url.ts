@@ -5,7 +5,11 @@ import {
   isSignupEnabledForProvider,
 } from '@documenso/lib/constants/auth';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
-import { syncDosProfileAndOrgs, type DosOrgClaim, type DosTeamClaim } from '@documenso/lib/server-only/dos-id/sync-dos-profile';
+import {
+  type DosOrgClaim,
+  type DosTeamClaim,
+  syncDosProfileAndOrgs,
+} from '@documenso/lib/server-only/dos-id/sync-dos-profile';
 import { getEmailBlocklistDomains } from '@documenso/lib/server-only/site-settings/get-email-blocklist-domains';
 import { onCreateUserHook } from '@documenso/lib/server-only/user/create-user';
 import { deletedServiceAccountEmail } from '@documenso/lib/server-only/user/service-accounts/deleted-account';
@@ -32,7 +36,19 @@ export const handleOAuthCallbackUrl = async (options: HandleOAuthCallbackUrlOpti
 
   const requestMeta = c.get('requestMetadata');
 
-  const { email, name, sub, accessToken, accessTokenExpiresAt, idToken, redirectPath, avatarUrl, organizations, teams, activeOrgId } = await validateOauth({
+  const {
+    email,
+    name,
+    sub,
+    accessToken,
+    accessTokenExpiresAt,
+    idToken,
+    redirectPath,
+    avatarUrl,
+    organizations,
+    teams,
+    activeOrgId,
+  } = await validateOauth({
     c,
     clientOptions,
   });
@@ -295,12 +311,25 @@ export const validateOauth = async (options: HandleOAuthCallbackUrlOptions) => {
   const email = claims.email;
   const name = claims.name || claims.display_name;
   const sub = claims.sub;
-  const avatarUrl = (typeof claims.picture === 'string' ? claims.picture : typeof claims.avatar_url === 'string' ? claims.avatar_url : null) as string | null;
-  const rawOrgs = (claims.organizations || claims.orgs || (claims.user_metadata as Record<string, unknown> | undefined)?.organizations || (claims.app_metadata as Record<string, unknown> | undefined)?.organizations) as DosOrgClaim[] | undefined;
+  const avatarUrl = (
+    typeof claims.picture === 'string'
+      ? claims.picture
+      : typeof claims.avatar_url === 'string'
+        ? claims.avatar_url
+        : null
+  ) as string | null;
+  const rawOrgs = (claims.organizations ||
+    claims.orgs ||
+    (claims.user_metadata as Record<string, unknown> | undefined)?.organizations ||
+    (claims.app_metadata as Record<string, unknown> | undefined)?.organizations) as DosOrgClaim[] | undefined;
   const organizations = Array.isArray(rawOrgs) ? rawOrgs : undefined;
-  const rawTeams = (claims.teams || (claims.user_metadata as Record<string, unknown> | undefined)?.teams || (claims.app_metadata as Record<string, unknown> | undefined)?.teams) as DosTeamClaim[] | undefined;
+  const rawTeams = (claims.teams ||
+    (claims.user_metadata as Record<string, unknown> | undefined)?.teams ||
+    (claims.app_metadata as Record<string, unknown> | undefined)?.teams) as DosTeamClaim[] | undefined;
   const teams = Array.isArray(rawTeams) ? rawTeams : undefined;
-  const activeOrgId = (typeof claims.active_org_id === 'string' ? claims.active_org_id : undefined) || (typeof claims.active_organization_id === 'string' ? claims.active_organization_id : undefined);
+  const activeOrgId =
+    (typeof claims.active_org_id === 'string' ? claims.active_org_id : undefined) ||
+    (typeof claims.active_organization_id === 'string' ? claims.active_organization_id : undefined);
 
   if (typeof email !== 'string') {
     throw new AppError(AuthenticationErrorCode.InvalidRequest, {

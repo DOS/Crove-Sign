@@ -23,7 +23,8 @@ const TESTNET_CONFIG = {
   rpcUrl: process.env.DOS_TESTNET_RPC || 'https://test.doschain.com',
   easAddress: '0x79799066b2b5072E4B154Bedde14Dbc22caa0EA5',
   schemaRegistry: '0x7979E91c465d3dde4faA7a6601b5b2c1C66c9999',
-  schemaV2: 'bytes32 envelopeHash, bytes32 artifactRoot, bytes32 auditBundleRoot, bytes32 identityEvidenceRoot, bytes32 riskEvidenceRoot, bytes32 policyHash, uint16 evidenceVersion, uint8 eventType',
+  schemaV2:
+    'bytes32 envelopeHash, bytes32 artifactRoot, bytes32 auditBundleRoot, bytes32 identityEvidenceRoot, bytes32 riskEvidenceRoot, bytes32 policyHash, uint16 evidenceVersion, uint8 eventType',
 };
 
 async function rpcCall(method, params = []) {
@@ -72,7 +73,9 @@ async function main() {
     console.log(`   ✅ RPC Online         : Latency ${latencyMs} ms`);
     console.log(`   🧱 Current Block      : #${blockNumber}\n`);
   } catch (err) {
-    console.warn(`   ⚠️ RPC Probe Warning   : ${err.message} (Outbox worker will queue and retry on network recovery)\n`);
+    console.warn(
+      `   ⚠️ RPC Probe Warning   : ${err.message} (Outbox worker will queue and retry on network recovery)\n`,
+    );
   }
 
   // Step 2: Check EAS Contract Bytecode
@@ -82,7 +85,9 @@ async function main() {
     if (bytecode && bytecode !== '0x' && bytecode !== '0x0') {
       console.log(`   ✅ EAS Bytecode Found : ${bytecode.slice(0, 34)}... (${Math.round(bytecode.length / 2)} bytes)`);
     } else {
-      console.log(`   ℹ️ [Notice] Contract bytecode not deployed on this RPC instance. Schema will be registered when Testnet validator nodes complete restart.`);
+      console.log(
+        `   ℹ️ [Notice] Contract bytecode not deployed on this RPC instance. Schema will be registered when Testnet validator nodes complete restart.`,
+      );
     }
   } catch (err) {
     console.warn(`   ⚠️ Bytecode query note: ${err.message}`);
@@ -94,8 +99,14 @@ async function main() {
   const mockEnvelopeId = `env_canary_${Date.now()}`;
   const mockPdfBytes = Buffer.from(`%PDF-1.7 Canary Document Contract - ${Date.now()}`);
   const artifactRoot = `0x${crypto.createHash('sha256').update(mockPdfBytes).digest('hex')}`;
-  const envelopeHash = `0x${crypto.createHash('sha256').update(JSON.stringify({ domain: 'CroveSign', id: mockEnvelopeId })).digest('hex')}`;
-  const auditBundleRoot = `0x${crypto.createHash('sha256').update(JSON.stringify({ event: 'DOCUMENT_COMPLETED', timestamp: new Date().toISOString() })).digest('hex')}`;
+  const envelopeHash = `0x${crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ domain: 'CroveSign', id: mockEnvelopeId }))
+    .digest('hex')}`;
+  const auditBundleRoot = `0x${crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ event: 'DOCUMENT_COMPLETED', timestamp: new Date().toISOString() }))
+    .digest('hex')}`;
   const anchorKey = `0x${crypto.createHash('sha256').update(`${mockEnvelopeId}:1:${artifactRoot}`).digest('hex')}`;
 
   console.log(`   📄 Mock Envelope ID   : ${mockEnvelopeId}`);

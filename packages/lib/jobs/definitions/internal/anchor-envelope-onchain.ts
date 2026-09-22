@@ -9,9 +9,7 @@ const ANCHOR_ENVELOPE_ONCHAIN_JOB_DEFINITION_SCHEMA = z.object({
   anchorKey: z.string().optional(),
 });
 
-export type TAnchorEnvelopeOnchainJobDefinition = z.infer<
-  typeof ANCHOR_ENVELOPE_ONCHAIN_JOB_DEFINITION_SCHEMA
->;
+export type TAnchorEnvelopeOnchainJobDefinition = z.infer<typeof ANCHOR_ENVELOPE_ONCHAIN_JOB_DEFINITION_SCHEMA>;
 
 export const ANCHOR_ENVELOPE_ONCHAIN_JOB_DEFINITION = {
   id: ANCHOR_ENVELOPE_ONCHAIN_JOB_DEFINITION_ID,

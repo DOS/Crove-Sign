@@ -98,12 +98,13 @@ export default function DocumentVerificationArticlePage() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <ShieldCheckIcon className="h-8 w-8 text-emerald-500" />
         </div>
-        <h1 className="font-bold text-3xl tracking-tight text-foreground md:text-4xl">
+        <h1 className="font-bold text-3xl text-foreground tracking-tight md:text-4xl">
           <Trans>Document Integrity Verification</Trans>
         </h1>
         <p className="mx-auto mt-2 max-w-xl text-muted-foreground text-sm md:text-base">
           <Trans>
-            Verify the cryptographic tamper-evident receipt and on-chain attestation of any signed document on DOS Chain / EAS.
+            Verify the cryptographic tamper-evident receipt and on-chain attestation of any signed document on DOS Chain
+            / EAS.
           </Trans>
         </p>
       </div>
@@ -111,7 +112,7 @@ export default function DocumentVerificationArticlePage() {
       {/* Drag & Drop Upload Card */}
       <Card className="border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">
+          <CardTitle className="font-semibold text-lg">
             <Trans>Upload Final PDF</Trans>
           </CardTitle>
           <CardDescription>
@@ -132,7 +133,9 @@ export default function DocumentVerificationArticlePage() {
               e.preventDefault();
               setIsDragging(false);
               const file = e.dataTransfer.files?.[0];
-              if (file) handleFileProcess(file);
+              if (file) {
+                handleFileProcess(file);
+              }
             }}
             onClick={() => {
               document.getElementById('verify-file-input')?.click();
@@ -145,14 +148,16 @@ export default function DocumentVerificationArticlePage() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handleFileProcess(file);
+                if (file) {
+                  handleFileProcess(file);
+                }
               }}
             />
 
             {isLoading ? (
               <div className="flex flex-col items-center gap-2">
                 <Loader2Icon className="h-10 w-10 animate-spin text-primary" />
-                <p className="font-medium text-sm text-foreground">
+                <p className="font-medium text-foreground text-sm">
                   <Trans>Computing cryptographic hash and querying DOS Chain...</Trans>
                 </p>
               </div>
@@ -216,11 +221,13 @@ export default function DocumentVerificationArticlePage() {
             <CardContent className="space-y-4 pt-2">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded-lg border bg-background p-3">
-                  <span className="text-muted-foreground text-xs font-semibold uppercase">
+                  <span className="font-semibold text-muted-foreground text-xs uppercase">
                     <Trans>Computed SHA-256 Hash</Trans>
                   </span>
                   <div className="mt-1 flex items-center justify-between">
-                    <code className="truncate text-xs text-foreground font-mono">{verificationResult.documentHash}</code>
+                    <code className="truncate font-mono text-foreground text-xs">
+                      {verificationResult.documentHash}
+                    </code>
                     <button
                       className="ml-2 text-muted-foreground hover:text-foreground"
                       onClick={() => copyToClipboard(verificationResult.documentHash, 'hash')}
@@ -230,17 +237,21 @@ export default function DocumentVerificationArticlePage() {
                     </button>
                   </div>
                   {copiedField === 'hash' && (
-                    <span className="text-[10px] text-emerald-600 font-medium"><Trans>Copied!</Trans></span>
+                    <span className="font-medium text-[10px] text-emerald-600">
+                      <Trans>Copied!</Trans>
+                    </span>
                   )}
                 </div>
 
                 {verificationResult.attestationUid && (
                   <div className="rounded-lg border bg-background p-3">
-                    <span className="text-muted-foreground text-xs font-semibold uppercase">
+                    <span className="font-semibold text-muted-foreground text-xs uppercase">
                       <Trans>EAS Attestation UID</Trans>
                     </span>
                     <div className="mt-1 flex items-center justify-between">
-                      <code className="truncate text-xs text-foreground font-mono">{verificationResult.attestationUid}</code>
+                      <code className="truncate font-mono text-foreground text-xs">
+                        {verificationResult.attestationUid}
+                      </code>
                       <button
                         className="ml-2 text-muted-foreground hover:text-foreground"
                         onClick={() => copyToClipboard(verificationResult.attestationUid, 'uid')}
@@ -250,40 +261,56 @@ export default function DocumentVerificationArticlePage() {
                       </button>
                     </div>
                     {copiedField === 'uid' && (
-                      <span className="text-[10px] text-emerald-600 font-medium"><Trans>Copied!</Trans></span>
+                      <span className="font-medium text-[10px] text-emerald-600">
+                        <Trans>Copied!</Trans>
+                      </span>
                     )}
                   </div>
                 )}
               </div>
 
               {verificationResult.isValid && (
-                <div className="rounded-lg border bg-background p-4 space-y-3">
-                  <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <div className="space-y-3 rounded-lg border bg-background p-4">
+                  <h4 className="flex items-center gap-2 font-semibold text-foreground text-sm">
                     <FileTextIcon className="h-4 w-4 text-primary" />
                     <Trans>Attestation Details</Trans>
                   </h4>
                   <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-3">
                     <div>
-                      <span className="text-muted-foreground"><Trans>Document Title</Trans>:</span>
+                      <span className="text-muted-foreground">
+                        <Trans>Document Title</Trans>:
+                      </span>
                       <p className="font-medium text-foreground">{verificationResult.envelopeTitle || 'Document'}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground"><Trans>Anchored At</Trans>:</span>
-                      <p className="font-medium text-foreground">{verificationResult.anchoredAt ? new Date(verificationResult.anchoredAt).toLocaleString() : 'N/A'}</p>
+                      <span className="text-muted-foreground">
+                        <Trans>Anchored At</Trans>:
+                      </span>
+                      <p className="font-medium text-foreground">
+                        {verificationResult.anchoredAt
+                          ? new Date(verificationResult.anchoredAt).toLocaleString()
+                          : 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground"><Trans>Network</Trans>:</span>
+                      <span className="text-muted-foreground">
+                        <Trans>Network</Trans>:
+                      </span>
                       <p className="font-medium text-foreground">DOS Chain (EAS Layer)</p>
                     </div>
                   </div>
 
                   {verificationResult.signers && verificationResult.signers.length > 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <span className="text-muted-foreground text-xs"><Trans>Signers</Trans>:</span>
+                    <div className="mt-3 border-t pt-3">
+                      <span className="text-muted-foreground text-xs">
+                        <Trans>Signers</Trans>:
+                      </span>
                       <div className="mt-1 space-y-1">
                         {verificationResult.signers.map((signer: any, idx: number) => (
                           <div key={idx} className="flex items-center justify-between text-xs">
-                            <span className="text-foreground font-medium">{signer.name} ({signer.email})</span>
+                            <span className="font-medium text-foreground">
+                              {signer.name} ({signer.email})
+                            </span>
                             <span className="text-muted-foreground capitalize">{signer.role}</span>
                           </div>
                         ))}
@@ -295,7 +322,10 @@ export default function DocumentVerificationArticlePage() {
 
               {/* Legal & Technical Disclaimer */}
               <div className="rounded-lg bg-muted/50 p-3 text-[11px] text-muted-foreground leading-relaxed">
-                <strong><Trans>Disclaimer</Trans>:</strong> {verificationResult.disclaimer}
+                <strong>
+                  <Trans>Disclaimer</Trans>:
+                </strong>{' '}
+                {verificationResult.disclaimer}
               </div>
             </CardContent>
           </Card>

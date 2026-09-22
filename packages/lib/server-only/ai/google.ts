@@ -8,25 +8,18 @@ export type GoogleServiceAccountCredentials = {
   project_id?: string;
 };
 
-export const parseGoogleServiceAccountKey = (
-  rawKey?: string | null,
-): GoogleServiceAccountCredentials | undefined => {
+export const parseGoogleServiceAccountKey = (rawKey?: string | null): GoogleServiceAccountCredentials | undefined => {
   if (!rawKey) {
     return undefined;
   }
 
   try {
     const trimmed = rawKey.trim();
-    const jsonStr = trimmed.startsWith('{')
-      ? trimmed
-      : Buffer.from(trimmed, 'base64').toString('utf8');
+    const jsonStr = trimmed.startsWith('{') ? trimmed : Buffer.from(trimmed, 'base64').toString('utf8');
 
     const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
 
-    if (
-      typeof parsed.client_email !== 'string' ||
-      typeof parsed.private_key !== 'string'
-    ) {
+    if (typeof parsed.client_email !== 'string' || typeof parsed.private_key !== 'string') {
       console.warn('GOOGLE_VERTEX_SERVICE_ACCOUNT_KEY is missing client_email or private_key');
       return undefined;
     }

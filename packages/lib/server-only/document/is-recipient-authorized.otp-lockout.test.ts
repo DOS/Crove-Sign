@@ -48,7 +48,9 @@ describe('validateEmailOtpWithLockout (M10/C3 recipient OTP lockout)', () => {
 
     expect(mocks.upsert).toHaveBeenCalledOnce();
 
-    const upsertArg = mocks.upsert.mock.calls[0][0] as { where: { key_action_bucket: { key: string; action: string } } };
+    const upsertArg = mocks.upsert.mock.calls[0][0] as {
+      where: { key_action_bucket: { key: string; action: string } };
+    };
     expect(upsertArg.where.key_action_bucket.key).toBe('otp-fail:env_1:signer@example.com');
     expect(upsertArg.where.key_action_bucket.action).toBe('auth.recipient-email-otp');
   });

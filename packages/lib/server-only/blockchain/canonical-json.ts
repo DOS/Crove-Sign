@@ -69,17 +69,11 @@ export function computeMerkleRoot(leafHashes: string[]): string {
 
     for (let i = 0; i < currentLevel.length; i += 2) {
       if (i + 1 < currentLevel.length) {
-        const combined = Buffer.concat([
-          Buffer.from(currentLevel[i], 'hex'),
-          Buffer.from(currentLevel[i + 1], 'hex'),
-        ]);
+        const combined = Buffer.concat([Buffer.from(currentLevel[i], 'hex'), Buffer.from(currentLevel[i + 1], 'hex')]);
         nextLevel.push(crypto.createHash('sha256').update(combined).digest('hex'));
       } else {
         // Odd node duplicated or carried up
-        const combined = Buffer.concat([
-          Buffer.from(currentLevel[i], 'hex'),
-          Buffer.from(currentLevel[i], 'hex'),
-        ]);
+        const combined = Buffer.concat([Buffer.from(currentLevel[i], 'hex'), Buffer.from(currentLevel[i], 'hex')]);
         nextLevel.push(crypto.createHash('sha256').update(combined).digest('hex'));
       }
     }

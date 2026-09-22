@@ -2,13 +2,7 @@ import { env } from '../../../utils/env';
 import type { JobRunIO } from '../../client/_internal/job';
 import type { TPublishDosEventJobDefinition } from './publish-dos-event';
 
-export const run = async ({
-  payload,
-  io,
-}: {
-  payload: TPublishDosEventJobDefinition;
-  io: JobRunIO;
-}) => {
+export const run = async ({ payload, io }: { payload: TPublishDosEventJobDefinition; io: JobRunIO }) => {
   const { event, data } = payload;
   const dosApiUrl = env('DOS_API_URL') || 'https://api.dos.me';
   const apiKey = env('DOS_INTERNAL_API_KEY') || env('NEXT_PRIVATE_DOS_INTERNAL_API_KEY') || '';
@@ -37,9 +31,7 @@ export const run = async ({
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
-      io.logger.warn(
-        `[DOS Event Publisher] Failed with status ${response.status}: ${errorText}`,
-      );
+      io.logger.warn(`[DOS Event Publisher] Failed with status ${response.status}: ${errorText}`);
       // Don't crash worker if external event router returns non-200 in dev
       if (response.status >= 500) {
         throw new Error(`[DOS Event Publisher] HTTP ${response.status}: ${errorText}`);

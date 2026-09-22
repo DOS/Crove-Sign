@@ -15,6 +15,8 @@ import { groupBy } from 'remeda';
 
 import { NEXT_PRIVATE_USE_PLAYWRIGHT_PDF } from '../../../constants/app';
 import { AppError, AppErrorCode } from '../../../errors/app-error';
+import { computeMerkleRoot, hashBytes32, hashCanonicalJson } from '../../../server-only/blockchain/canonical-json';
+import { dispatchContractCompletedToCrm } from '../../../server-only/dos-id/crm-event-mapper';
 import { getAuditLogsPdf } from '../../../server-only/htmltopdf/get-audit-logs-pdf';
 import { getCertificatePdf } from '../../../server-only/htmltopdf/get-certificate-pdf';
 import { insertFieldInPDFV1 } from '../../../server-only/pdf/insert-field-in-pdf-v1';
@@ -22,12 +24,6 @@ import { insertFieldInPDFV2 } from '../../../server-only/pdf/insert-field-in-pdf
 import { legacy_insertFieldInPDF } from '../../../server-only/pdf/legacy-insert-field-in-pdf';
 import { getTeamSettings } from '../../../server-only/team/get-team-settings';
 import { triggerWebhook } from '../../../server-only/webhooks/trigger/trigger-webhook';
-import { dispatchContractCompletedToCrm } from '../../../server-only/dos-id/crm-event-mapper';
-import {
-  computeMerkleRoot,
-  hashBytes32,
-  hashCanonicalJson,
-} from '../../../server-only/blockchain/canonical-json';
 import { DOCUMENT_AUDIT_LOG_TYPE, type TDocumentAuditLog } from '../../../types/document-audit-logs';
 import { isTspEnvelope } from '../../../types/signature-level';
 import { mapEnvelopeToWebhookDocumentPayload, ZWebhookDocumentSchema } from '../../../types/webhook-payload';
@@ -397,14 +393,16 @@ export const run = async ({ payload, io }: { payload: TSealDocumentJobDefinition
 
   // Trigger on-chain anchor worker asynchronously after successful commit
   if (!isRejected) {
-    void jobs.triggerJob({
-      name: 'internal.anchor-envelope-onchain',
-      payload: {
-        envelopeId,
-      },
-    }).catch((err) => {
-      console.warn(`[Blockchain Anchor] Failed to enqueue anchor job for envelope ${envelopeId}:`, err);
-    });
+    void jobs
+      .triggerJob({
+        name: 'internal.anchor-envelope-onchain',
+        payload: {
+          envelopeId,
+        },
+      })
+      .catch((err) => {
+        console.warn(`[Blockchain Anchor] Failed to enqueue anchor job for envelope ${envelopeId}:`, err);
+      });
   }
 
   let shouldSendCompletedEmail = sendEmail && !isResealing && !isRejected;

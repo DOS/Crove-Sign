@@ -1,7 +1,7 @@
-import { sendOrganisationAccountLinkConfirmationEmail } from '@documenso/lib/server-only/organisation/sso/send-sso-link-confirmation-email';
 import { formatPath } from '@documenso/lib/constants/app';
 import { isDisposableEmail, isSignupEnabledForProvider } from '@documenso/lib/constants/auth';
 import { AppError } from '@documenso/lib/errors/app-error';
+import { sendOrganisationAccountLinkConfirmationEmail } from '@documenso/lib/server-only/organisation/sso/send-sso-link-confirmation-email';
 import { getEmailBlocklistDomains } from '@documenso/lib/server-only/site-settings/get-email-blocklist-domains';
 import { onCreateUserHook } from '@documenso/lib/server-only/user/create-user';
 import { formatOrganisationLoginUrl } from '@documenso/lib/utils/organisation-authentication-portal';

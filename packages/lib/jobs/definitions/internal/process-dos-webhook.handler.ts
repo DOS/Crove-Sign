@@ -2,13 +2,7 @@ import { handleDosWebhookEvent } from '../../../server-only/dos-id/handle-dos-we
 import type { JobRunIO } from '../../client/_internal/job';
 import type { TProcessDosWebhookJobDefinition } from './process-dos-webhook';
 
-export const run = async ({
-  payload,
-  io,
-}: {
-  payload: TProcessDosWebhookJobDefinition;
-  io: JobRunIO;
-}) => {
+export const run = async ({ payload, io }: { payload: TProcessDosWebhookJobDefinition; io: JobRunIO }) => {
   io.logger.info(`[DOS Webhook Job] Processing event: ${payload.event} (id: ${payload.eventId || 'n/a'})`);
 
   const result = await handleDosWebhookEvent(payload);

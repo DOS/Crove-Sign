@@ -214,12 +214,9 @@ export const validateEmailOtpWithLockout = async (
 
   if (failRecord && failRecord.count >= OTP_MAX_ATTEMPTS) {
     throw new AppError(AppErrorCode.TOO_MANY_REQUESTS, {
-      message:
-        'Too many invalid verification attempts. Please request a new code and try again later.',
+      message: 'Too many invalid verification attempts. Please request a new code and try again later.',
       headers: {
-        'Retry-After': String(
-          Math.max(1, Math.ceil((bucket.getTime() + OTP_LOCKOUT_WINDOW_MS - Date.now()) / 1000)),
-        ),
+        'Retry-After': String(Math.max(1, Math.ceil((bucket.getTime() + OTP_LOCKOUT_WINDOW_MS - Date.now()) / 1000))),
       },
     });
   }

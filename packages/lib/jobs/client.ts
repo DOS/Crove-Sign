@@ -26,9 +26,9 @@ import { CLEANUP_RATE_LIMITS_JOB_DEFINITION } from './definitions/internal/clean
 import { EXECUTE_WEBHOOK_JOB_DEFINITION } from './definitions/internal/execute-webhook';
 import { EXPIRE_RECIPIENTS_SWEEP_JOB_DEFINITION } from './definitions/internal/expire-recipients-sweep';
 import { PROCESS_DOS_WEBHOOK_JOB_DEFINITION } from './definitions/internal/process-dos-webhook';
-import { PUBLISH_DOS_EVENT_JOB_DEFINITION } from './definitions/internal/publish-dos-event';
 import { PROCESS_RECIPIENT_EXPIRED_JOB_DEFINITION } from './definitions/internal/process-recipient-expired';
 import { PROCESS_SIGNING_REMINDER_JOB_DEFINITION } from './definitions/internal/process-signing-reminder';
+import { PUBLISH_DOS_EVENT_JOB_DEFINITION } from './definitions/internal/publish-dos-event';
 import { RECONCILE_BLOCKCHAIN_ANCHORS_JOB_DEFINITION } from './definitions/internal/reconcile-blockchain-anchors';
 import { SEAL_DOCUMENT_JOB_DEFINITION } from './definitions/internal/seal-document';
 import { SEAL_DOCUMENT_SWEEP_JOB_DEFINITION } from './definitions/internal/seal-document-sweep';

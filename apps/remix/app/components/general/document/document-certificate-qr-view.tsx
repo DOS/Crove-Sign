@@ -76,8 +76,8 @@ export const DocumentCertificateQRView = ({
 
               <DialogDescription>
                 <Trans>
-                  This document is available in your Crove Sign account. You can view more details, recipients, and audit
-                  logs there.
+                  This document is available in your Crove Sign account. You can view more details, recipients, and
+                  audit logs there.
                 </Trans>
               </DialogDescription>
             </DialogHeader>
@@ -131,31 +131,31 @@ export const DocumentCertificateQRView = ({
               </div>
             </div>
 
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="w-fit">
-              <a
-                href={`/articles/verify-document?token=${encodeURIComponent(token)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ShieldCheckIcon className="mr-2 h-5 w-5 text-emerald-500" />
-                <Trans>Verify on Blockchain</Trans>
-              </a>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline" className="w-fit">
+                <a
+                  href={`/articles/verify-document?token=${encodeURIComponent(token)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ShieldCheckIcon className="mr-2 h-5 w-5 text-emerald-500" />
+                  <Trans>Verify on Blockchain</Trans>
+                </a>
+              </Button>
 
-            <EnvelopeDownloadDialog
-              envelopeId={envelopeItems[0].envelopeId}
-              envelopeStatus={DocumentStatus.COMPLETED}
-              envelopeItems={envelopeItems}
-              token={token}
-              trigger={
-                <Button type="button" variant="outline" className="w-fit">
-                  <DownloadIcon className="mr-2 h-5 w-5" />
-                  <Trans>Download</Trans>
-                </Button>
-              }
-            />
-          </div>
+              <EnvelopeDownloadDialog
+                envelopeId={envelopeItems[0].envelopeId}
+                envelopeStatus={DocumentStatus.COMPLETED}
+                envelopeItems={envelopeItems}
+                token={token}
+                trigger={
+                  <Button type="button" variant="outline" className="w-fit">
+                    <DownloadIcon className="mr-2 h-5 w-5" />
+                    <Trans>Download</Trans>
+                  </Button>
+                }
+              />
+            </div>
           </div>
 
           <div className="mt-12 w-full">

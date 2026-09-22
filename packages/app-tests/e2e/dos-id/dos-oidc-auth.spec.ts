@@ -28,7 +28,7 @@ test.describe('[DOS OIDC Auth]: Sign In & Sign Up pages', () => {
   test('should handle invalid OIDC callback gracefully', async ({ page }) => {
     // Navigate to OIDC callback with invalid state/code
     const response = await page.goto('/api/auth/callback/oidc?code=invalid_mock_code&state=invalid_state');
-    
+
     // Should not crash the server (either redirect to /signin with error or return 400/500 structured response)
     expect(response?.status()).toBeLessThan(600);
   });

@@ -22,10 +22,7 @@ export const verifyDosWebhookSignature = ({
     ? signatureHeader.slice(expectedPrefix.length)
     : signatureHeader;
 
-  const computedHash = crypto
-    .createHmac('sha256', secret)
-    .update(rawBody, 'utf8')
-    .digest('hex');
+  const computedHash = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex');
 
   if (providedHash.length !== computedHash.length) {
     return false;
