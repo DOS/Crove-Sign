@@ -14,6 +14,12 @@ export const run = async ({ payload, io }: { payload: TProcessDosWebhookJobDefin
 
   io.logger.info(`[DOS Webhook Job] Successfully processed event: ${payload.event}`);
 
+  // No-op consumptions (unknown entities) succeed silently; surface their
+  // reason as a warning so the "ignored" bucket stays auditable in logs.
+  if (/not found/i.test(result.message)) {
+    io.logger.warn(`[DOS Webhook Job] Event consumed as no-op: ${result.message}`);
+  }
+
   return {
     success: true,
     message: result.message,

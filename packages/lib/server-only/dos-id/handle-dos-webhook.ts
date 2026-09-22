@@ -49,6 +49,14 @@ export const handleDosWebhookEvent = async (
     // ==========================================
     // ORGANISATION EVENTS
     // ==========================================
+    // DOS ID broadcasts events for the whole ecosystem, including
+    // organisations absent from the sign schema (created before webhook
+    // integration, failed provisioning, or deleted upstream). An
+    // entity-not-found lookup is permanent, so those events are consumed as
+    // idempotent no-ops instead of failures: retrying never succeeds and the
+    // retry storm once produced ~1.4k failed jobs per hour. Malformed
+    // payloads (missing required fields) keep failing so contract breaks
+    // stay loud.
     case 'organization.created':
     case 'org.created': {
       const orgId = (data.org_id || data.id) as string | undefined;
@@ -95,6 +103,12 @@ export const handleDosWebhookEvent = async (
       const slug = data.slug as string | undefined;
       const name = data.name as string | undefined;
 
+      // An empty where clause must never reach Prisma: a missing id AND slug
+      // is a malformed payload, not an entity to resolve.
+      if (!orgId && !slug) {
+        return { success: false, message: 'Missing org_id or slug in org.updated' };
+      }
+
       const org = await prisma.organisation.findFirst({
         where: {
           OR: [...(orgId ? [{ id: orgId }] : []), ...(slug ? [{ url: slug }] : [])],
@@ -102,7 +116,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: 'Organization not found' };
+        return { success: true, message: 'Organization not found in sign schema, nothing to update' };
       }
 
       await prisma.organisation.update({
@@ -121,6 +135,12 @@ export const handleDosWebhookEvent = async (
       const orgId = (data.org_id || data.id) as string | undefined;
       const slug = data.slug as string | undefined;
 
+      // Same malformed-payload guard as org.updated: an empty OR clause must
+      // never reach Prisma on a destructive path.
+      if (!orgId && !slug) {
+        return { success: false, message: 'Missing org_id or slug in org.deleted' };
+      }
+
       const org = await prisma.organisation.findFirst({
         where: {
           OR: [...(orgId ? [{ id: orgId }] : []), ...(slug ? [{ url: slug }] : [])],
@@ -132,7 +152,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: 'Organization not found for deletion' };
+        return { success: true, message: 'Organization not found in sign schema, nothing to delete' };
       }
 
       await deleteOrganisation({
@@ -164,7 +184,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: 'Organization not found' };
+        return { success: true, message: 'Organization not found in sign schema, nothing to update' };
       }
 
       let user = await prisma.user.findFirst({
@@ -269,7 +289,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: `Organisation ${orgId} not found for team.created` };
+        return { success: true, message: `Organisation ${orgId} not found in sign schema, nothing to create` };
       }
 
       // Check if team already exists
@@ -318,7 +338,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!team) {
-        return { success: false, message: 'Team not found for update' };
+        return { success: true, message: 'Team not found in sign schema, nothing to update' };
       }
 
       await prisma.team.update({
@@ -354,7 +374,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!team) {
-        return { success: false, message: 'Team not found for deletion' };
+        return { success: true, message: 'Team not found in sign schema, nothing to delete' };
       }
 
       await prisma.$transaction(async (tx) => {
@@ -413,7 +433,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!targetOrg) {
-        return { success: false, message: 'Target organisation not found' };
+        return { success: true, message: 'Target organisation not found in sign schema, nothing to add' };
       }
 
       const finalOrgId = targetOrg.id;
