@@ -50,10 +50,11 @@ export const handleDosWebhookEvent = async (
     // ORGANISATION EVENTS
     // ==========================================
     // DOS ID broadcasts events for the whole ecosystem, including
-    // organisations whose owners never used Crove Sign (no JIT provisioning).
-    // An entity-not-found lookup is permanent, so those events are consumed
-    // as idempotent no-ops instead of failures: retrying never succeeds and
-    // the retry storm once produced ~1.4k failed jobs per hour. Malformed
+    // organisations absent from the sign schema (created before webhook
+    // integration, failed provisioning, or deleted upstream). An
+    // entity-not-found lookup is permanent, so those events are consumed as
+    // idempotent no-ops instead of failures: retrying never succeeds and the
+    // retry storm once produced ~1.4k failed jobs per hour. Malformed
     // payloads (missing required fields) keep failing so contract breaks
     // stay loud.
     case 'organization.created':
@@ -102,6 +103,12 @@ export const handleDosWebhookEvent = async (
       const slug = data.slug as string | undefined;
       const name = data.name as string | undefined;
 
+      // An empty where clause must never reach Prisma: a missing id AND slug
+      // is a malformed payload, not an entity to resolve.
+      if (!orgId && !slug) {
+        return { success: false, message: 'Missing org_id or slug in org.updated' };
+      }
+
       const org = await prisma.organisation.findFirst({
         where: {
           OR: [...(orgId ? [{ id: orgId }] : []), ...(slug ? [{ url: slug }] : [])],
@@ -127,6 +134,12 @@ export const handleDosWebhookEvent = async (
     case 'org.deleted': {
       const orgId = (data.org_id || data.id) as string | undefined;
       const slug = data.slug as string | undefined;
+
+      // Same malformed-payload guard as org.updated: an empty OR clause must
+      // never reach Prisma on a destructive path.
+      if (!orgId && !slug) {
+        return { success: false, message: 'Missing org_id or slug in org.deleted' };
+      }
 
       const org = await prisma.organisation.findFirst({
         where: {
