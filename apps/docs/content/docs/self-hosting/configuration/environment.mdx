@@ -313,8 +313,9 @@ NEXT_PUBLIC_DISABLE_SIGNUP="true"
 
 You can control which methods are available for users to sign in with the following environment variables:
 
-- **`NEXT_PUBLIC_DISABLE_SIGNIN`** (master switch): Set to `true` to block all signin methods (email/password, Google, Microsoft, OIDC). Hides every signin entry point on `/signin` and rejects email/password signin server-side with a `SIGNIN_DISABLED` error.
+- **`NEXT_PUBLIC_DISABLE_SIGNIN`** (master switch): Set to `true` to block all signin methods (email/password, Google, Microsoft, OIDC). Hides every signin entry point on `/signin`. Server-side, the password management endpoints (`update-password`, `forgot-password`, `reset-password`) reject requests with a `SIGNIN_DISABLED` error, while the signin endpoint itself answers with the same `INVALID_CREDENTIALS` error as a wrong password so that probing cannot reveal which accounts exist.
 - **`NEXT_PUBLIC_DISABLE_EMAIL_PASSWORD_SIGNIN`**: Set to `true` to disable email/password signin only. The email/password form is hidden, the `/forgot-password` and `/reset-password` pages redirect to `/signin`, and the corresponding server endpoints reject requests. SSO signin is unaffected.
+- **`NEXT_PRIVATE_BREAK_GLASS_EMAILS`**: Comma-separated admin emails that keep password signin available via `/signin?direct=1` even when email/password signin is disabled suite-wide (e.g. redirect-only OIDC deployments). Intended as an escape hatch for when the identity provider is unreachable. Attempts from emails outside the list are rejected with the same error as a wrong password, so the allowlist cannot be probed.
 - **`NEXT_PUBLIC_DISABLE_GOOGLE_SIGNIN`**, **`NEXT_PUBLIC_DISABLE_MICROSOFT_SIGNIN`**, **`NEXT_PUBLIC_DISABLE_OIDC_SIGNIN`**: Set to `true` to hide the matching SSO button on the signin page. Useful when an SSO provider is kept configured for account linking but not advertised as a signin entry point.
 
 These flags are opt-in: when none are set, signin behaviour is unchanged from a stock Documenso instance.
