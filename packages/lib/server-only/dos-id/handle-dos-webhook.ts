@@ -49,6 +49,13 @@ export const handleDosWebhookEvent = async (
     // ==========================================
     // ORGANISATION EVENTS
     // ==========================================
+    // DOS ID broadcasts events for the whole ecosystem, including
+    // organisations whose owners never used Crove Sign (no JIT provisioning).
+    // An entity-not-found lookup is permanent, so those events are consumed
+    // as idempotent no-ops instead of failures: retrying never succeeds and
+    // the retry storm once produced ~1.4k failed jobs per hour. Malformed
+    // payloads (missing required fields) keep failing so contract breaks
+    // stay loud.
     case 'organization.created':
     case 'org.created': {
       const orgId = (data.org_id || data.id) as string | undefined;
@@ -102,7 +109,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: 'Organization not found' };
+        return { success: true, message: 'Organization not found in sign schema, nothing to update' };
       }
 
       await prisma.organisation.update({
@@ -132,7 +139,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: 'Organization not found for deletion' };
+        return { success: true, message: 'Organization not found in sign schema, nothing to delete' };
       }
 
       await deleteOrganisation({
@@ -164,7 +171,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: 'Organization not found' };
+        return { success: true, message: 'Organization not found in sign schema, nothing to update' };
       }
 
       let user = await prisma.user.findFirst({
@@ -269,7 +276,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!org) {
-        return { success: false, message: `Organisation ${orgId} not found for team.created` };
+        return { success: true, message: `Organisation ${orgId} not found in sign schema, nothing to create` };
       }
 
       // Check if team already exists
@@ -318,7 +325,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!team) {
-        return { success: false, message: 'Team not found for update' };
+        return { success: true, message: 'Team not found in sign schema, nothing to update' };
       }
 
       await prisma.team.update({
@@ -354,7 +361,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!team) {
-        return { success: false, message: 'Team not found for deletion' };
+        return { success: true, message: 'Team not found in sign schema, nothing to delete' };
       }
 
       await prisma.$transaction(async (tx) => {
@@ -413,7 +420,7 @@ export const handleDosWebhookEvent = async (
       });
 
       if (!targetOrg) {
-        return { success: false, message: 'Target organisation not found' };
+        return { success: true, message: 'Target organisation not found in sign schema, nothing to add' };
       }
 
       const finalOrgId = targetOrg.id;
