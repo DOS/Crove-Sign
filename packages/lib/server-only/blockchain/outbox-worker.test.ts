@@ -1,13 +1,7 @@
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
-import {
-  canonicalizeJson,
-  computeMerkleRoot,
-  hashBytes32,
-  hashCanonicalJson,
-} from './canonical-json';
-import { CROVE_EAS_SCHEMA_V2 } from './resolver-abi';
+import { computeMerkleRoot, hashBytes32, hashCanonicalJson } from './canonical-json';
 
 describe('Blockchain Outbox & Attestation State Machine Simulation', () => {
   // Enum mirroring Prisma BlockchainAnchorStatus
@@ -167,9 +161,7 @@ describe('Blockchain Outbox & Attestation State Machine Simulation', () => {
     anchorRecord.attempts += 1;
     anchorRecord.lastError = 'RPC Connection Timeout';
     anchorRecord.status =
-      anchorRecord.attempts < 5
-        ? BlockchainAnchorStatus.RETRYABLE_FAILED
-        : BlockchainAnchorStatus.PERMANENT_FAILED;
+      anchorRecord.attempts < 5 ? BlockchainAnchorStatus.RETRYABLE_FAILED : BlockchainAnchorStatus.PERMANENT_FAILED;
 
     expect(anchorRecord.status).toBe(BlockchainAnchorStatus.RETRYABLE_FAILED);
     expect(anchorRecord.attempts).toBe(1);
@@ -177,8 +169,7 @@ describe('Blockchain Outbox & Attestation State Machine Simulation', () => {
     // Simulate Reconciliation Sweep picking up RETRYABLE_FAILED record
     const eligibleForReconcile = [anchorRecord].filter(
       (a) =>
-        (a.status === BlockchainAnchorStatus.PENDING ||
-          a.status === BlockchainAnchorStatus.RETRYABLE_FAILED) &&
+        (a.status === BlockchainAnchorStatus.PENDING || a.status === BlockchainAnchorStatus.RETRYABLE_FAILED) &&
         a.attempts < 5,
     );
     expect(eligibleForReconcile.length).toBe(1);

@@ -39,9 +39,7 @@ export type TBlockchainVerificationResult = {
  * evidence is dishonest. Re-introduce a fallback only once anchors carry a
  * real on-chain receipt.
  */
-export async function verifyDocumentFile(
-  pdfBuffer: Buffer | Uint8Array,
-): Promise<TBlockchainVerificationResult> {
+export async function verifyDocumentFile(pdfBuffer: Buffer | Uint8Array): Promise<TBlockchainVerificationResult> {
   const documentHash = hashBytes32(pdfBuffer);
 
   const anchor = await prisma.blockchainAnchor.findFirst({
@@ -107,9 +105,7 @@ export async function verifyDocumentFile(
  * `documentHash: '0x0'` when no anchor existed, so the public verification
  * portal confirmed documents that were never anchored on-chain.
  */
-export async function verifyDocumentByQrToken(
-  qrToken: string,
-): Promise<TBlockchainVerificationResult | null> {
+export async function verifyDocumentByQrToken(qrToken: string): Promise<TBlockchainVerificationResult | null> {
   const envelope = await prisma.envelope.findFirst({
     where: { qrToken },
     include: {

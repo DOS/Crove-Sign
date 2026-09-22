@@ -18,10 +18,7 @@ export const run = async ({
   const stuckAnchors = await prisma.blockchainAnchor.findMany({
     where: {
       status: {
-        in: [
-          BlockchainAnchorStatus.PENDING,
-          BlockchainAnchorStatus.RETRYABLE_FAILED,
-        ],
+        in: [BlockchainAnchorStatus.PENDING, BlockchainAnchorStatus.RETRYABLE_FAILED],
       },
       attempts: {
         lt: 5,

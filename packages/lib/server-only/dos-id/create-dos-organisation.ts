@@ -22,11 +22,7 @@ export type CreateDosOrganisationOptions = {
  *
  * If API delegation is unavailable, it gracefully falls back to local creation.
  */
-export const createDosOrganisation = async ({
-  userId,
-  name,
-  slug,
-}: CreateDosOrganisationOptions) => {
+export const createDosOrganisation = async ({ userId, name, slug }: CreateDosOrganisationOptions) => {
   const account = await prisma.account.findFirst({
     where: {
       userId,

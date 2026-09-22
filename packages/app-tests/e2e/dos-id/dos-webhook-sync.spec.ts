@@ -3,8 +3,9 @@ import { prisma } from '@documenso/prisma';
 import { expect, test } from '@playwright/test';
 
 test.describe('[DOS Webhook Sync]: /api/webhooks/dos-org-sync', () => {
-  const webhookSecret = process.env.CROVE_DOS_WEBHOOK_SECRET || process.env.NEXT_PRIVATE_DOS_WEBHOOK_SECRET || 'test-dos-webhook-secret';
-  
+  const webhookSecret =
+    process.env.CROVE_DOS_WEBHOOK_SECRET || process.env.NEXT_PRIVATE_DOS_WEBHOOK_SECRET || 'test-dos-webhook-secret';
+
   const generateSignature = (body: string, secret: string) => {
     return `sha256=${crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex')}`;
   };

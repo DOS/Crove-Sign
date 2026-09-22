@@ -21,9 +21,15 @@ import { performance } from 'node:perf_hooks';
 // =========================================================================
 
 function canonicalizeJson(obj) {
-  if (obj === null || obj === undefined) return 'null';
-  if (typeof obj === 'number' || typeof obj === 'boolean') return JSON.stringify(obj);
-  if (typeof obj === 'string') return JSON.stringify(obj);
+  if (obj === null || obj === undefined) {
+    return 'null';
+  }
+  if (typeof obj === 'number' || typeof obj === 'boolean') {
+    return JSON.stringify(obj);
+  }
+  if (typeof obj === 'string') {
+    return JSON.stringify(obj);
+  }
   if (Array.isArray(obj)) {
     return `[${obj.map((item) => canonicalizeJson(item)).join(',')}]`;
   }
@@ -46,23 +52,19 @@ function computeMerkleRoot(leafHashes) {
   if (leafHashes.length === 0) {
     return '0x0000000000000000000000000000000000000000000000000000000000000000';
   }
-  if (leafHashes.length === 1) return leafHashes[0];
+  if (leafHashes.length === 1) {
+    return leafHashes[0];
+  }
 
   let currentLevel = leafHashes.map((h) => (h.startsWith('0x') ? h.slice(2) : h));
   while (currentLevel.length > 1) {
     const nextLevel = [];
     for (let i = 0; i < currentLevel.length; i += 2) {
       if (i + 1 < currentLevel.length) {
-        const combined = Buffer.concat([
-          Buffer.from(currentLevel[i], 'hex'),
-          Buffer.from(currentLevel[i + 1], 'hex'),
-        ]);
+        const combined = Buffer.concat([Buffer.from(currentLevel[i], 'hex'), Buffer.from(currentLevel[i + 1], 'hex')]);
         nextLevel.push(crypto.createHash('sha256').update(combined).digest('hex'));
       } else {
-        const combined = Buffer.concat([
-          Buffer.from(currentLevel[i], 'hex'),
-          Buffer.from(currentLevel[i], 'hex'),
-        ]);
+        const combined = Buffer.concat([Buffer.from(currentLevel[i], 'hex'), Buffer.from(currentLevel[i], 'hex')]);
         nextLevel.push(crypto.createHash('sha256').update(combined).digest('hex'));
       }
     }
@@ -115,8 +117,9 @@ async function runBenchmarks() {
   const testCounts = [1, 2, 5, 10, 25, 50];
 
   for (const count of testCounts) {
-    const leafHashes = Array.from({ length: count }, (_, idx) =>
-      `0x${crypto.createHash('sha256').update(`PDF Document Content ${idx}`).digest('hex')}`
+    const leafHashes = Array.from(
+      { length: count },
+      (_, idx) => `0x${crypto.createHash('sha256').update(`PDF Document Content ${idx}`).digest('hex')}`,
     );
 
     const startMerkle = performance.now();
@@ -134,13 +137,15 @@ async function runBenchmarks() {
   // Evidence Schema v2: 6 x bytes32 (192 bytes) + uint16 (32 bytes padded) + uint8 (32 bytes padded) = 256 bytes payload
   const singleAttestCalldataBytes = 4 + 32 + 32 + 32 + 32 + 32 + 32 + 256; // ~484 bytes
   const singleAttestGas = 21000 + singleAttestCalldataBytes * 16 + 45000; // Base + Calldata + State write (~65,000 - 85,000 gas)
-  
+
   // Batch 5 items in multiAttest
-  const batch5Gas = 21000 + (singleAttestCalldataBytes * 5) * 16 + 45000 + 4 * 25000; // ~180,000 gas (average ~36k gas per document)
-  const gasSavingsPct = Math.round((1 - (batch5Gas / 5) / singleAttestGas) * 100);
+  const batch5Gas = 21000 + singleAttestCalldataBytes * 5 * 16 + 45000 + 4 * 25000; // ~180,000 gas (average ~36k gas per document)
+  const gasSavingsPct = Math.round((1 - batch5Gas / 5 / singleAttestGas) * 100);
 
   console.log(`   ⛽ Single Document Attestation  : ~${singleAttestGas.toLocaleString()} gas`);
-  console.log(`   ⛽ Multi-Item Batch (5 items)   : ~${batch5Gas.toLocaleString()} gas total (~${Math.round(batch5Gas / 5).toLocaleString()} gas/doc)`);
+  console.log(
+    `   ⛽ Multi-Item Batch (5 items)   : ~${batch5Gas.toLocaleString()} gas total (~${Math.round(batch5Gas / 5).toLocaleString()} gas/doc)`,
+  );
   console.log(`   💡 Multi-Attest Gas Efficiency  : ${gasSavingsPct}% gas reduction per document\n`);
 
   // Test 4: DOS Chain RPC Network Check
@@ -175,7 +180,9 @@ async function runBenchmarks() {
     }
   } catch (err) {
     console.log(`   ℹ️ [Notice] RPC offline or unreachable from local machine (${err.message}).`);
-    console.log(`   🛡️ Crove Sign Outbox Worker handles network latency gracefully with retryable outbox persistence.\n`);
+    console.log(
+      `   🛡️ Crove Sign Outbox Worker handles network latency gracefully with retryable outbox persistence.\n`,
+    );
   }
 
   console.log('================================================================');

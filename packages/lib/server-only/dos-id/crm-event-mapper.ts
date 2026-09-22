@@ -24,13 +24,9 @@ export type ContractCompletedEventData = {
  * Maps and dispatches a structured `contract.completed` / `contract.signed` event
  * directly formatted for ingestion by Twenty CRM and Crove Desk.
  */
-export async function dispatchContractCompletedToCrm(
-  eventData: ContractCompletedEventData,
-): Promise<void> {
+export async function dispatchContractCompletedToCrm(eventData: ContractCompletedEventData): Promise<void> {
   const baseUrl = NEXT_PUBLIC_WEBAPP_URL();
-  const customerEmails = (eventData.recipients || [])
-    .map((r) => r.email.toLowerCase())
-    .filter(Boolean);
+  const customerEmails = (eventData.recipients || []).map((r) => r.email.toLowerCase()).filter(Boolean);
 
   const payload: Record<string, unknown> = {
     contract_id: eventData.envelopeId,

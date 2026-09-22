@@ -120,4 +120,3 @@ export const webhookIngestRateLimit = createRateLimit({
   globalMax: 300,
   window: '1m',
 });
-

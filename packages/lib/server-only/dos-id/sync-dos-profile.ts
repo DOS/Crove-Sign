@@ -142,13 +142,7 @@ export const mapDosRoleToTeamRole = (role?: string): TeamMemberRole => {
 /**
  * Provision or join an organization for a user given DOS ID claims.
  */
-export const syncOrganisationForUser = async ({
-  userId,
-  org,
-}: {
-  userId: number;
-  org: DosOrgClaim;
-}) => {
+export const syncOrganisationForUser = async ({ userId, org }: { userId: number; org: DosOrgClaim }) => {
   const rawOrgId = org.org_id || org.id;
   const orgName = org.name || org.slug || 'Organization';
   const orgUrl = org.slug || rawOrgId || prefixedId('org');
@@ -173,8 +167,7 @@ export const syncOrganisationForUser = async ({
 
     if (!isAlreadyMember) {
       const targetGroup = existingOrg.groups.find(
-        (group) =>
-          group.type === OrganisationGroupType.INTERNAL_ORGANISATION && group.organisationRole === memberRole,
+        (group) => group.type === OrganisationGroupType.INTERNAL_ORGANISATION && group.organisationRole === memberRole,
       );
 
       if (targetGroup) {
@@ -249,9 +242,7 @@ export const syncOrganisationForUser = async ({
       },
     });
 
-    const adminGroup = createdOrg.groups.find(
-      (group) => group.organisationRole === OrganisationMemberRole.ADMIN,
-    );
+    const adminGroup = createdOrg.groups.find((group) => group.organisationRole === OrganisationMemberRole.ADMIN);
 
     if (adminGroup) {
       await tx.organisationMember.create({
@@ -379,9 +370,7 @@ export const syncTeamForUser = async ({
   }
 
   // Find matching team group for the desired role
-  const matchingTeamGroup = existingTeam.teamGroups.find(
-    (tg) => tg.teamRole === teamRole,
-  );
+  const matchingTeamGroup = existingTeam.teamGroups.find((tg) => tg.teamRole === teamRole);
 
   if (matchingTeamGroup) {
     const isAlreadyInGroup = matchingTeamGroup.organisationGroup.organisationGroupMembers.some(
@@ -389,13 +378,15 @@ export const syncTeamForUser = async ({
     );
 
     if (!isAlreadyInGroup) {
-      await prisma.organisationGroupMember.create({
-        data: {
-          id: generateDatabaseId('group_member'),
-          groupId: matchingTeamGroup.organisationGroupId,
-          organisationMemberId: orgMember.id,
-        },
-      }).catch(() => null);
+      await prisma.organisationGroupMember
+        .create({
+          data: {
+            id: generateDatabaseId('group_member'),
+            groupId: matchingTeamGroup.organisationGroupId,
+            organisationMemberId: orgMember.id,
+          },
+        })
+        .catch(() => null);
     }
   }
 };
@@ -523,10 +514,7 @@ export const syncDosProfileAndOrgs = async ({
             team,
             organisationId: finalOrgId,
           }).catch((err) => {
-            console.error(
-              `[DOS ID] Failed to JIT sync team ${team.name || team.slug} for user ${userId}:`,
-              err,
-            );
+            console.error(`[DOS ID] Failed to JIT sync team ${team.name || team.slug} for user ${userId}:`, err);
           });
         }
       }

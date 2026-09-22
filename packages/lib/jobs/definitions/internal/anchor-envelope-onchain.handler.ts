@@ -4,13 +4,7 @@ import { BlockchainAnchorStatus } from '@prisma/client';
 import type { JobRunIO } from '../../client/_internal/job';
 import type { TAnchorEnvelopeOnchainJobDefinition } from './anchor-envelope-onchain';
 
-export const run = async ({
-  payload,
-  io,
-}: {
-  payload: TAnchorEnvelopeOnchainJobDefinition;
-  io: JobRunIO;
-}) => {
+export const run = async ({ payload, io }: { payload: TAnchorEnvelopeOnchainJobDefinition; io: JobRunIO }) => {
   const { envelopeId, anchorKey } = payload;
 
   io.logger.info(`[Blockchain Anchor] Starting on-chain anchor job for envelope ${envelopeId}`);
@@ -29,7 +23,9 @@ export const run = async ({
   }
 
   if (anchor.status === BlockchainAnchorStatus.CONFIRMED) {
-    io.logger.info(`[Blockchain Anchor] Envelope ${envelopeId} already confirmed on-chain (UID: ${anchor.attestationUid})`);
+    io.logger.info(
+      `[Blockchain Anchor] Envelope ${envelopeId} already confirmed on-chain (UID: ${anchor.attestationUid})`,
+    );
     return { success: true, attestationUid: anchor.attestationUid };
   }
 
@@ -71,9 +67,7 @@ export const run = async ({
     await prisma.blockchainAnchor.update({
       where: { id: anchor.id },
       data: {
-        status: isRetryable
-          ? BlockchainAnchorStatus.RETRYABLE_FAILED
-          : BlockchainAnchorStatus.PERMANENT_FAILED,
+        status: isRetryable ? BlockchainAnchorStatus.RETRYABLE_FAILED : BlockchainAnchorStatus.PERMANENT_FAILED,
         lastError: errorMessage,
       },
     });

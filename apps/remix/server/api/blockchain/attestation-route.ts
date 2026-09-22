@@ -1,7 +1,4 @@
-import {
-  verifyDocumentByQrToken,
-  verifyDocumentFile,
-} from '@documenso/lib/server-only/blockchain/verify-attestation';
+import { verifyDocumentByQrToken, verifyDocumentFile } from '@documenso/lib/server-only/blockchain/verify-attestation';
 import { prisma } from '@documenso/prisma';
 import { Hono } from 'hono';
 
@@ -24,10 +21,7 @@ export const attestationRoute = new Hono()
       });
 
       if (!anchor) {
-        return c.json(
-          { success: false, message: 'No blockchain anchor record found for this envelope' },
-          404,
-        );
+        return c.json({ success: false, message: 'No blockchain anchor record found for this envelope' }, 404);
       }
 
       return c.json(

@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  canonicalizeJson,
-  computeMerkleRoot,
-  hashBytes32,
-  hashCanonicalJson,
-} from './canonical-json';
+import { canonicalizeJson, computeMerkleRoot, hashBytes32, hashCanonicalJson } from './canonical-json';
 
 describe('canonical-json (RFC 8785)', () => {
   it('should sort object keys deterministically', () => {

@@ -7,7 +7,8 @@ describe('parseGoogleServiceAccountKey', () => {
     const jsonKey = JSON.stringify({
       type: 'service_account',
       project_id: 'my-gcp-project',
-      private_key: '-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n',
+      private_key:
+        '-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n',
       client_email: 'sa-crove-sign@my-gcp-project.iam.gserviceaccount.com',
     });
 
@@ -15,7 +16,8 @@ describe('parseGoogleServiceAccountKey', () => {
 
     expect(parsed).toEqual({
       project_id: 'my-gcp-project',
-      private_key: '-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n',
+      private_key:
+        '-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n',
       client_email: 'sa-crove-sign@my-gcp-project.iam.gserviceaccount.com',
     });
   });
