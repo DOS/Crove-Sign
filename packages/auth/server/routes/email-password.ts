@@ -4,6 +4,7 @@ import {
   isEmailDomainAllowedForSignup,
   isSigninEnabledForProvider,
   isSignupEnabledForProvider,
+  TIMING_SAFE_DUMMY_PASSWORD_HASH,
 } from '@documenso/lib/constants/auth';
 import { EMAIL_VERIFICATION_STATE } from '@documenso/lib/constants/email';
 import { AppError } from '@documenso/lib/errors/app-error';
@@ -102,6 +103,10 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
     // same INVALID_CREDENTIALS error as a wrong password, so probing the
     // endpoint cannot reveal which emails are on the allowlist.
     if (!isSigninEnabledForProvider('email') && !isBreakGlassEmail(email)) {
+      // Equalise timing with the real compare below so measuring response
+      // time cannot reveal allowlist membership either.
+      await compare(password, TIMING_SAFE_DUMMY_PASSWORD_HASH);
+
       throw new AppError(AuthenticationErrorCode.InvalidCredentials, {
         message: 'Invalid email or password',
       });
@@ -118,6 +123,10 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
     });
 
     if (!user || !user.password) {
+      // Equalise timing with the real compare below: unknown users and
+      // passwordless accounts must not be distinguishable by response time.
+      await compare(password, TIMING_SAFE_DUMMY_PASSWORD_HASH);
+
       throw new AppError(AuthenticationErrorCode.InvalidCredentials, {
         message: 'Invalid email or password',
       });

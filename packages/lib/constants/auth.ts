@@ -5,6 +5,16 @@ import { NEXT_PUBLIC_WEBAPP_URL } from './app';
 
 export const SALT_ROUNDS = 12;
 
+/**
+ * Precomputed bcrypt hash (cost = SALT_ROUNDS) of an unguessable string.
+ * Compared against the submitted password on early-rejected signin attempts
+ * (signin disabled suite-wide, unknown user, user without a password) so
+ * every failing path pays the same bcrypt cost and the endpoint cannot be
+ * probed by measuring verification time. Never validates anything: any
+ * compare against it returns false.
+ */
+export const TIMING_SAFE_DUMMY_PASSWORD_HASH = '$2y$12$eAJ6CR54acEljh1J/AN.peIPUd19yidDQRKhynGQriewBgzF1bQdm';
+
 export const IDENTITY_PROVIDER_NAME: Record<string, string> = {
   DOCUMENSO: 'Documenso',
   GOOGLE: 'Google',
