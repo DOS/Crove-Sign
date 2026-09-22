@@ -68,15 +68,6 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
 
     const { email, password, totpCode, backupCode, csrfToken, captchaToken } = c.req.valid('json');
 
-    // Break-glass: when password signin is disabled suite-wide, allowlisted
-    // admin emails (see NEXT_PRIVATE_BREAK_GLASS_EMAILS) may still sign in
-    // via /signin?direct=1 while the OIDC provider is unreachable.
-    if (!isSigninEnabledForProvider('email') && !isBreakGlassEmail(email)) {
-      throw new AppError(AuthenticationErrorCode.SigninDisabled, {
-        statusCode: 400,
-      });
-    }
-
     const loginLimitResult = await loginRateLimit.check({
       ip: requestMetadata.ipAddress ?? 'unknown',
       identifier: email,
@@ -103,6 +94,18 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
       token: captchaToken,
       ipAddress: requestMetadata.ipAddress,
     });
+
+    // Break-glass: when password signin is disabled suite-wide, allowlisted
+    // admin emails (see NEXT_PRIVATE_BREAK_GLASS_EMAILS) may still sign in
+    // via /signin?direct=1 while the OIDC provider is unreachable. The gate
+    // sits after the rate limit and CSRF/captcha checks and rejects with the
+    // same INVALID_CREDENTIALS error as a wrong password, so probing the
+    // endpoint cannot reveal which emails are on the allowlist.
+    if (!isSigninEnabledForProvider('email') && !isBreakGlassEmail(email)) {
+      throw new AppError(AuthenticationErrorCode.InvalidCredentials, {
+        message: 'Invalid email or password',
+      });
+    }
 
     if (email.toLowerCase() === legacyServiceAccountEmail() || email.toLowerCase() === deletedServiceAccountEmail()) {
       return c.text('FORBIDDEN', 403);
