@@ -415,16 +415,13 @@ export const syncDosProfileAndOrgs = async ({
       });
   }
 
-  // 2. Sync Avatar if URL is provided
+  // 2. Sync Avatar if URL is provided. The IdP avatar is the source of truth
+  // (same policy as the name above): refresh on every login so upstream
+  // avatar changes propagate - the old skip-if-exists guard froze the first
+  // avatar forever. A locally-uploaded avatar is only replaced when the IdP
+  // actually provides a URL; with no IdP avatar the local upload stays.
   if (avatarUrl) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { avatarImageId: true },
-    });
-
-    if (!user?.avatarImageId) {
-      await syncUserAvatarFromUrl(userId, avatarUrl);
-    }
+    await syncUserAvatarFromUrl(userId, avatarUrl);
   }
 
   // 3. JIT Provision Organizations from claims OR shared PostgreSQL DB fallback
