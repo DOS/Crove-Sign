@@ -13,6 +13,7 @@ Lộ trình phát triển và hoàn thiện nền tảng Ký kết Điện tử 
 [Phase 4: Multi-Language & Backup]    ████████████████████ 100% Hoàn thành
 [Phase 5: PoC EAS Attestation]        ░░░░░░░░░░░░░░░░░░░░  Ready for Testnet PoC
 [Phase 6: Multi-Chain & QES/CloudHSM] ░░░░░░░░░░░░░░░░░░░░  Planned
+[Phase 7: Enterprise Parity & Brand]  ██░░░░░░░░░░░░░░░░░░  In Progress (Audit 2026-09-22)
 ```
 
 ---
@@ -76,3 +77,18 @@ Lộ trình phát triển và hoàn thiện nền tảng Ký kết Điện tử 
 - [ ] **Multi-Chain Portability**: Cấu hình mở rộng attestation sang các Layer 2 EVM (Base, Arbitrum, Optimism) và Arweave/Sign Protocol.
 - [ ] **Dịch vụ Dấu thời gian Pháp lý (Qualified Electronic Timestamp)**: Tích hợp với đơn vị cung cấp dịch vụ tin cậy được cấp phép theo Nghị định 23/2025/NĐ-CP và Luật Giao dịch điện tử 20/2023/QH15.
 - [ ] **Cloud HSM & QES Hardware Signatures**: Hỗ trợ ký số doanh nghiệp qua Google Cloud KMS / AWS CloudHSM tuân thủ tiêu chuẩn PAdES LTV.
+
+---
+
+### 🏗️ Giai đoạn 7: Enterprise Parity & Branding Hoàn Thiện (In Progress - Audit 2026-09-22)
+Kết quả audit tính năng Enterprise vs upstream + branding toàn repo (2026-09-22). Chi tiết: 2 báo cáo audit trong session notes.
+
+- [ ] **Org Avatar Sync từ DOS ID** (PR #17 pending merge): `syncOrganisationAvatarFromUrl` - kéo `avatar_url` từ claim/webhook vào `sign.Organisation.avatarImageId` (trước đây org có avatar upstream vẫn hiện initials). JIT org sync (fire-and-forget, không block login) + webhook `org.created`/`org.updated`.
+- [x] **Auth Hardening Series (PR #9-#16)**: OIDC auto-redirect + IdP-down fallback, đóng allowlist oracle (INVALID_CREDENTIALS đồng nhất sau rate-limit/CSRF/captcha), timing equalisation (dummy bcrypt), avatar JIT refresh theo IdP source-of-truth, webhook no-op cho org lạ (chữa retry storm ~1.4k fail/hour).
+- [ ] **Branding Batch 1** (PR #18 pending merge): email footer env-driven (`NEXT_PRIVATE_BRANDING_COMPANY_DETAILS`), trang `/terms` + `/privacy` local (placeholder - cần text pháp lý chính thức), share page rebrand + redirect về app, rasterize brand binaries đang được serve (favicon/OG/email logo/share frames trong `apps/remix/public/static/`) từ Crove SVG qua patch script.
+- [ ] **Branding Batch 2**: 2FA issuer "Documenso" → env-driven, option "Documenso" trong sender dropdown, upsell strings (app.documenso.com), mailto:support@documenso.com, twitter handle, package.json scope `@documenso/*` (cân nhắc - ảnh hưởng imports).
+- [ ] **Org-level Webhooks & API Tokens & OrganisationAuditLog**: webhook/token hiện chỉ gắn team-level; thiếu model audit log cấp organisation (enterprise parity lớn nhất cho khách multi-team).
+- [ ] **Tháo CSC License Gate**: `instanceCscSigning` fail-closed không Documenso license key - điều kiện tiên quyết cho Phase 6 (QES/CloudHSM). Thay bằng pattern `CROVE_FEATURE_*` như Email Domains/SSO Portal.
+- [ ] **Embed White-label Self-host Bypass**: `embedAuthoringWhiteLabel` đọc claim flag không có fallback `!IS_BILLING_ENABLED()` như branding - thêm fallback cho nhất quán.
+- [ ] **SSO Group→Role Mapping & SCIM Lifecycle**: map nhóm IdP → `OrganisationGroup` role + tự thu hồi quyền khi offboard.
+- [ ] **Legal Text Chính Thức**: duyệt và thay placeholder tại `/terms`, `/privacy` (bắt buộc trước khi bán doanh nghiệp).
