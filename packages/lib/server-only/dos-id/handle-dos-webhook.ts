@@ -6,6 +6,7 @@ import { deleteOrganisation } from '../organisation/delete-organisation';
 import { createTeam } from '../team/create-team';
 import {
   mapDosRoleToOrgRole,
+  syncOrganisationAvatarFromUrl,
   syncOrganisationForUser,
   syncTeamForUser,
   syncUserAvatarFromUrl,
@@ -102,6 +103,7 @@ export const handleDosWebhookEvent = async (
       const orgId = (data.org_id || data.id) as string | undefined;
       const slug = data.slug as string | undefined;
       const name = data.name as string | undefined;
+      const avatarUrl = (data.avatar_url || data.picture) as string | undefined;
 
       // An empty where clause must never reach Prisma: a missing id AND slug
       // is a malformed payload, not an entity to resolve.
@@ -126,6 +128,10 @@ export const handleDosWebhookEvent = async (
           ...(slug ? { url: slug } : {}),
         },
       });
+
+      if (avatarUrl) {
+        await syncOrganisationAvatarFromUrl(org.id, avatarUrl);
+      }
 
       return { success: true, message: 'Organization updated successfully' };
     }
