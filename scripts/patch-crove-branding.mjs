@@ -404,6 +404,14 @@ async function rasterizeBrandBinaries() {
       .toFile(path.join(ROOT_DIR, 'packages/assets/static/logo.png'));
     console.log('   ✓ packages/assets/static/logo.png (374x55 wordmark)');
 
+    // The SERVED copies live in apps/remix/public/static/ (email asset-url
+    // and the share OG composition fetch them over HTTP) - packages/assets/
+    // static/ is the source-of-record twin.
+    await sharp(Buffer.from(wordmarkSvg('#111311', null)))
+      .png()
+      .toFile(path.join(ROOT_DIR, 'apps/remix/public/static/logo.png'));
+    console.log('   ✓ apps/remix/public/static/logo.png (374x55 wordmark)');
+
     await sharp(Buffer.from(MARK_SVG))
       .resize(320, 320)
       .png()
@@ -420,10 +428,20 @@ async function rasterizeBrandBinaries() {
       .toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame.png'));
     console.log('   ✓ packages/assets/static/og-share-frame.png (1200x630)');
 
+    await sharp(Buffer.from(shareFrameSvg(GREEN)))
+      .png()
+      .toFile(path.join(ROOT_DIR, 'apps/remix/public/static/og-share-frame.png'));
+    console.log('   ✓ apps/remix/public/static/og-share-frame.png (1200x630)');
+
     await sharp(Buffer.from(shareFrameSvg('#34D399')))
       .png()
       .toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame2.png'));
     console.log('   ✓ packages/assets/static/og-share-frame2.png (1200x630)');
+
+    await sharp(Buffer.from(shareFrameSvg('#34D399')))
+      .png()
+      .toFile(path.join(ROOT_DIR, 'apps/remix/public/static/og-share-frame2.png'));
+    console.log('   ✓ apps/remix/public/static/og-share-frame2.png (1200x630)');
   } catch (error) {
     // Degrade to the committed binaries on any sharp/libvips failure rather
     // than failing the whole patch run.
