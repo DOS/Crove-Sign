@@ -294,11 +294,140 @@ export const BrandingLogoIcon = ({ className = 'h-6 w-auto', ...props }: LogoPro
 }
 
 // ==========================================
-// 5. UPDATE METADATA UTILS
+// 5. RASTERIZE BRAND BINARIES
+// ==========================================
+
+// Regenerates the committed PNG/ICO/JPG brand binaries from the Crove SVG
+// (the upstream Documenso artwork that ships with the repo would otherwise
+// keep leaking into favicons, social previews and email footers). Requires
+// sharp at the repo root; skipped gracefully when unavailable so the patch
+// never fails a fresh clone without node_modules.
+async function rasterizeBrandBinaries() {
+  console.log('🖼️  [4/5] Rasterizing Crove Sign brand binaries...');
+
+  let sharp;
+
+  try {
+    sharp = (await import('sharp')).default;
+  } catch {
+    console.log('   ⚠️ sharp not available - skipping binary rasterization (committed binaries kept)');
+    return;
+  }
+
+  const MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+  <rect x="2" y="2" width="32" height="32" rx="8" fill="#10B981" />
+  <path
+    d="M11 18.5C11 14 14.5 10.5 19 10.5C22.5 10.5 25 12.5 25.5 15M25 15L22.5 25.5C22 27 20.5 28 19 28C16.5 28 14.5 26 14.5 23.5C14.5 20.5 18 19 25 19"
+    stroke="#FFFFFF"
+    stroke-width="2.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>`;
+
+  const GREEN = '#10B981';
+  const DARK = '#0f1113';
+
+  const wordmarkSvg = (textColor, bg) => `<svg xmlns="http://www.w3.org/2000/svg" width="374" height="55" viewBox="0 0 374 55">
+  ${bg ? `<rect width="374" height="55" fill="${bg}"/>` : ''}
+  <text x="6" y="41" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="${textColor}">Crove</text>
+  <text x="146" y="41" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="${GREEN}">Sign</text>
+</svg>`;
+
+  const ogSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1270" height="760" viewBox="0 0 1270 760">
+  <rect width="1270" height="760" fill="${DARK}"/>
+  <rect x="24" y="24" width="1222" height="712" rx="28" fill="none" stroke="${GREEN}" stroke-opacity="0.35" stroke-width="3"/>
+  <g transform="translate(150, 280) scale(5.5)" fill="none">${MARK_SVG.replace('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">', '').replace('</svg>', '')}</g>
+  <text x="370" y="365" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="88" font-weight="700" fill="#FFFFFF">Crove</text>
+  <text x="688" y="365" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="88" font-weight="700" fill="${GREEN}">Sign</text>
+  <text x="374" y="432" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="30" fill="#9CA3AF">Electronic signatures for the Crove OS ecosystem</text>
+</svg>`;
+
+  const shareFrameSvg = (accent) => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="${DARK}"/>
+  <rect x="24" y="24" width="1152" height="582" rx="24" fill="none" stroke="${accent}" stroke-opacity="0.5" stroke-width="3"/>
+  <text x="64" y="118" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Crove</text>
+  <text x="188" y="118" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="${accent}">Sign</text>
+  <g transform="translate(1032, 508) scale(2.4)" fill="none">${MARK_SVG.replace('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">', '').replace('</svg>', '')}</g>
+</svg>`;
+
+  // Minimal ICO container wrapping a single PNG-compressed image (valid on
+  // Windows Vista and every browser released since).
+  const pngToIco = (pngBuffer) => {
+    const header = Buffer.alloc(6);
+    header.writeUInt16LE(0, 0);
+    header.writeUInt16LE(1, 2);
+    header.writeUInt16LE(1, 4);
+
+    const entry = Buffer.alloc(16);
+    entry.writeUInt8(32, 0);
+    entry.writeUInt8(32, 1);
+    entry.writeUInt8(0, 2);
+    entry.writeUInt8(0, 3);
+    entry.writeUInt16LE(1, 4);
+    entry.writeUInt16LE(32, 6);
+    entry.writeUInt32LE(pngBuffer.length, 8);
+    entry.writeUInt32LE(22, 12);
+
+    return Buffer.concat([header, entry, pngBuffer]);
+  };
+
+  const writeIco = async (buffer) => {
+    const png = await sharp(buffer).resize(32, 32).png().toBuffer();
+    return pngToIco(png);
+  };
+
+  const targets = [
+    ['apps/remix/public/favicon-16x16.png', 16],
+    ['apps/remix/public/favicon-32x32.png', 32],
+    ['apps/remix/public/apple-touch-icon.png', 180],
+    ['apps/remix/public/android-chrome-192x192.png', 192],
+    ['apps/remix/public/android-chrome-512x512.png', 512],
+  ];
+
+  try {
+    for (const [relPath, size] of targets) {
+      await sharp(Buffer.from(MARK_SVG))
+        .resize(size, size)
+        .png()
+        .toFile(path.join(ROOT_DIR, relPath));
+      console.log(`   ✓ ${relPath} (${size}x${size})`);
+    }
+
+    fs.writeFileSync(path.join(ROOT_DIR, 'apps/remix/public/favicon.ico'), await writeIco(Buffer.from(MARK_SVG)));
+    console.log('   ✓ apps/remix/public/favicon.ico (32x32 PNG-ICO)');
+
+    await sharp(Buffer.from(wordmarkSvg('#111311', null)))
+      .png()
+      .toFile(path.join(ROOT_DIR, 'packages/assets/static/logo.png'));
+    console.log('   ✓ packages/assets/static/logo.png (374x55 wordmark)');
+
+    await sharp(Buffer.from(MARK_SVG)).resize(320, 320).png().toFile(path.join(ROOT_DIR, 'packages/assets/logo_icon.png'));
+    console.log('   ✓ packages/assets/logo_icon.png (320x320)');
+
+    await sharp(Buffer.from(ogSvg)).jpeg({ quality: 90 }).toFile(path.join(ROOT_DIR, 'apps/remix/public/opengraph-image.jpg'));
+    console.log('   ✓ apps/remix/public/opengraph-image.jpg (1270x760)');
+
+    await sharp(Buffer.from(shareFrameSvg(GREEN))).png().toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame.png'));
+    console.log('   ✓ packages/assets/static/og-share-frame.png (1200x630)');
+
+    await sharp(Buffer.from(shareFrameSvg('#34D399'))).png().toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame2.png'));
+    console.log('   ✓ packages/assets/static/og-share-frame2.png (1200x630)');
+  } catch (error) {
+    // Degrade to the committed binaries on any sharp/libvips failure rather
+    // than failing the whole patch run.
+    console.log(`   ⚠️ Rasterization failed (${error.message}) - committed binaries kept`);
+  }
+
+  console.log('   ✅ Brand binaries rasterized.\n');
+}
+
+// ==========================================
+// 6. UPDATE METADATA UTILS
 // ==========================================
 
 function patchMetadata() {
-  console.log('📄 [4/4] Verifying app metadata...');
+  console.log('📄 [5/5] Verifying app metadata...');
   const metaPath = path.join(ROOT_DIR, 'apps', 'remix', 'app', 'utils', 'meta.ts');
   const metaContent = `import { NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
 import { i18n, type MessageDescriptor } from '@lingui/core';
@@ -372,7 +501,7 @@ export const appMetaTags = (title?: MessageDescriptor) => {
 // MAIN RUNNER
 // ==========================================
 
-function main() {
+async function main() {
   console.log('\n========================================');
   console.log('🚀 Crove Sign - Enterprise Brand Patch');
   console.log('========================================\n');
@@ -381,6 +510,7 @@ function main() {
     patchTranslationCatalogs();
     patchWebManifests();
     generateBrandAssets();
+    await rasterizeBrandBinaries();
     patchMetadata();
 
     console.log('🎉 ALL CROVE SIGN BRANDING PATCHES APPLIED SUCCESSFULLY!\n');

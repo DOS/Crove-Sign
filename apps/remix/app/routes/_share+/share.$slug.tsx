@@ -12,15 +12,15 @@ export function meta({ params: { slug } }: Route.MetaArgs) {
   }
 
   return [
-    { title: 'Documenso - Share' },
-    { description: 'I just signed a document in style with Documenso!' },
+    { title: 'Crove Sign - Share' },
+    { description: 'I just signed a document in style with Crove Sign!' },
     {
       property: 'og:title',
-      content: 'Documenso - Join the open source signing revolution',
+      content: 'Crove Sign - Electronic signatures for the Crove OS ecosystem',
     },
     {
       property: 'og:description',
-      content: 'I just signed with Documenso!',
+      content: 'I just signed with Crove Sign!',
     },
     {
       property: 'og:type',
@@ -32,7 +32,7 @@ export function meta({ params: { slug } }: Route.MetaArgs) {
     },
     {
       name: 'twitter:site',
-      content: '@documenso',
+      content: '@crovedos',
     },
     {
       name: 'twitter:card',
@@ -44,7 +44,7 @@ export function meta({ params: { slug } }: Route.MetaArgs) {
     },
     {
       name: 'twitter:description',
-      content: 'I just signed with Documenso!',
+      content: 'I just signed with Crove Sign!',
     },
   ];
 }
@@ -69,8 +69,8 @@ export const loader = async ({ request, params: { slug } }: Route.LoaderArgs) =>
     return {};
   }
 
-  // Is hardcoded because this whole meta is hardcoded anyway for Documenso.
-  throw redirect('https://documenso.com');
+  // Non-share visitors (bots excluded above) land on the app home.
+  throw redirect(NEXT_PUBLIC_WEBAPP_URL());
 };
 
 export default function SharePage() {

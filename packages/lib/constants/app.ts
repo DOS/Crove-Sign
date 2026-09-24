@@ -184,3 +184,10 @@ export const CSC_INSTANCE_SIGNATURE_LEVEL = (): TSignatureLevel => {
 };
 
 export const DOCUMENSO_CLOUD_ENTERPRISE_CTA_URL = 'https://documen.so/enterprise-cta';
+
+/**
+ * Company identity rendered in the email footer when an organisation has no
+ * custom branding. Override per deployment (legal address, site, etc.) via
+ * the NEXT_PRIVATE_BRANDING_COMPANY_DETAILS env (newline-separated lines).
+ */
+export const APP_COMPANY_DETAILS = () => env('NEXT_PRIVATE_BRANDING_COMPANY_DETAILS') || 'Crove\nhttps://crove.com';
