@@ -328,7 +328,10 @@ async function rasterizeBrandBinaries() {
   const GREEN = '#10B981';
   const DARK = '#0f1113';
 
-  const wordmarkSvg = (textColor, bg) => `<svg xmlns="http://www.w3.org/2000/svg" width="374" height="55" viewBox="0 0 374 55">
+  const wordmarkSvg = (
+    textColor,
+    bg,
+  ) => `<svg xmlns="http://www.w3.org/2000/svg" width="374" height="55" viewBox="0 0 374 55">
   ${bg ? `<rect width="374" height="55" fill="${bg}"/>` : ''}
   <text x="6" y="41" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="${textColor}">Crove</text>
   <text x="146" y="41" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="${GREEN}">Sign</text>
@@ -343,7 +346,9 @@ async function rasterizeBrandBinaries() {
   <text x="374" y="432" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="30" fill="#9CA3AF">Electronic signatures for the Crove OS ecosystem</text>
 </svg>`;
 
-  const shareFrameSvg = (accent) => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  const shareFrameSvg = (
+    accent,
+  ) => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="${DARK}"/>
   <rect x="24" y="24" width="1152" height="582" rx="24" fill="none" stroke="${accent}" stroke-opacity="0.5" stroke-width="3"/>
   <text x="64" y="118" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Crove</text>
@@ -387,10 +392,7 @@ async function rasterizeBrandBinaries() {
 
   try {
     for (const [relPath, size] of targets) {
-      await sharp(Buffer.from(MARK_SVG))
-        .resize(size, size)
-        .png()
-        .toFile(path.join(ROOT_DIR, relPath));
+      await sharp(Buffer.from(MARK_SVG)).resize(size, size).png().toFile(path.join(ROOT_DIR, relPath));
       console.log(`   ✓ ${relPath} (${size}x${size})`);
     }
 
@@ -402,16 +404,25 @@ async function rasterizeBrandBinaries() {
       .toFile(path.join(ROOT_DIR, 'packages/assets/static/logo.png'));
     console.log('   ✓ packages/assets/static/logo.png (374x55 wordmark)');
 
-    await sharp(Buffer.from(MARK_SVG)).resize(320, 320).png().toFile(path.join(ROOT_DIR, 'packages/assets/logo_icon.png'));
+    await sharp(Buffer.from(MARK_SVG))
+      .resize(320, 320)
+      .png()
+      .toFile(path.join(ROOT_DIR, 'packages/assets/logo_icon.png'));
     console.log('   ✓ packages/assets/logo_icon.png (320x320)');
 
-    await sharp(Buffer.from(ogSvg)).jpeg({ quality: 90 }).toFile(path.join(ROOT_DIR, 'apps/remix/public/opengraph-image.jpg'));
+    await sharp(Buffer.from(ogSvg))
+      .jpeg({ quality: 90 })
+      .toFile(path.join(ROOT_DIR, 'apps/remix/public/opengraph-image.jpg'));
     console.log('   ✓ apps/remix/public/opengraph-image.jpg (1270x760)');
 
-    await sharp(Buffer.from(shareFrameSvg(GREEN))).png().toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame.png'));
+    await sharp(Buffer.from(shareFrameSvg(GREEN)))
+      .png()
+      .toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame.png'));
     console.log('   ✓ packages/assets/static/og-share-frame.png (1200x630)');
 
-    await sharp(Buffer.from(shareFrameSvg('#34D399'))).png().toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame2.png'));
+    await sharp(Buffer.from(shareFrameSvg('#34D399')))
+      .png()
+      .toFile(path.join(ROOT_DIR, 'packages/assets/static/og-share-frame2.png'));
     console.log('   ✓ packages/assets/static/og-share-frame2.png (1200x630)');
   } catch (error) {
     // Degrade to the committed binaries on any sharp/libvips failure rather
