@@ -91,7 +91,7 @@ export const handleDosWebhookEvent = async (
           name,
           slug,
           role: 'ADMIN',
-          avatar_url: data.avatar_url as string | undefined,
+          avatar_url: (data.avatar_url || data.picture) as string | undefined,
         },
       });
 

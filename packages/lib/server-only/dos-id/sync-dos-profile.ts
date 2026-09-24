@@ -252,9 +252,11 @@ export const syncOrganisationForUser = async ({ userId, org }: { userId: number;
     }
 
     // The IdP org avatar is the source of truth (same policy as the user
-    // avatar): refresh whenever DOS ID provides a URL.
+    // avatar): refresh whenever DOS ID provides a URL. Fire-and-forget so
+    // the OAuth redirect latency stays independent of the org count - the
+    // avatar lands a moment after login and failures are logged inside.
     if (org.avatar_url) {
-      await syncOrganisationAvatarFromUrl(existingOrg.id, org.avatar_url);
+      void syncOrganisationAvatarFromUrl(existingOrg.id, org.avatar_url);
     }
 
     return existingOrg;
@@ -345,7 +347,7 @@ export const syncOrganisationForUser = async ({ userId, org }: { userId: number;
   });
 
   if (org.avatar_url) {
-    await syncOrganisationAvatarFromUrl(newOrg.id, org.avatar_url);
+    void syncOrganisationAvatarFromUrl(newOrg.id, org.avatar_url);
   }
 
   return newOrg;
