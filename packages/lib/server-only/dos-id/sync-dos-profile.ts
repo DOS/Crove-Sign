@@ -49,30 +49,43 @@ export type SyncDosUserOptions = {
 };
 
 /**
+ * Downloads an avatar from an external URL and returns the optimised bytes
+ * as base64, or null when the fetch or optimisation fails. The URL comes
+ * from OIDC claims and webhook payloads, so it is attacker-influenceable:
+ * guard it with the same SSRF checks as webhooks before the server fetches.
+ */
+const fetchOptimisedAvatarBase64 = async (avatarUrl: string): Promise<string | null> => {
+  await assertNotPrivateUrl(avatarUrl);
+
+  const response = await fetch(avatarUrl, {
+    signal: AbortSignal.timeout(5000),
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const base64Bytes = Buffer.from(arrayBuffer).toString('base64');
+  const optimisedBuffer = await optimiseAvatar(base64Bytes);
+
+  return optimisedBuffer.toString('base64');
+};
+
+/**
  * Downloads and sets a user avatar from an external URL if provided.
  */
 export const syncUserAvatarFromUrl = async (userId: number, avatarUrl: string): Promise<string | null> => {
   try {
-    // The URL comes from OIDC claims and webhook payloads, so it is
-    // attacker-influenceable: guard it with the same SSRF checks as webhooks
-    // before the server fetches it.
-    await assertNotPrivateUrl(avatarUrl);
+    const bytes = await fetchOptimisedAvatarBase64(avatarUrl);
 
-    const response = await fetch(avatarUrl, {
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!response.ok) {
+    if (!bytes) {
       return null;
     }
 
-    const arrayBuffer = await response.arrayBuffer();
-    const base64Bytes = Buffer.from(arrayBuffer).toString('base64');
-    const optimisedBuffer = await optimiseAvatar(base64Bytes);
-
     const avatarImage = await prisma.avatarImage.create({
       data: {
-        bytes: optimisedBuffer.toString('base64'),
+        bytes,
       },
     });
 
@@ -101,6 +114,57 @@ export const syncUserAvatarFromUrl = async (userId: number, avatarUrl: string): 
     return avatarImage.id;
   } catch (error) {
     console.error(`[DOS ID] Failed to sync avatar for user ${userId}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Downloads and sets an organisation avatar from an external URL. Mirrors the
+ * user variant: the IdP URL is the source of truth, refreshed on every sync,
+ * and any error fails soft so logins never break on avatar errors.
+ */
+export const syncOrganisationAvatarFromUrl = async (
+  organisationId: string,
+  avatarUrl: string,
+): Promise<string | null> => {
+  try {
+    const bytes = await fetchOptimisedAvatarBase64(avatarUrl);
+
+    if (!bytes) {
+      return null;
+    }
+
+    const avatarImage = await prisma.avatarImage.create({
+      data: {
+        bytes,
+      },
+    });
+
+    const organisation = await prisma.organisation.findUnique({
+      where: { id: organisationId },
+      select: { avatarImageId: true },
+    });
+
+    const oldAvatarId = organisation?.avatarImageId;
+
+    await prisma.organisation.update({
+      where: { id: organisationId },
+      data: {
+        avatarImageId: avatarImage.id,
+      },
+    });
+
+    if (oldAvatarId) {
+      await prisma.avatarImage
+        .delete({
+          where: { id: oldAvatarId },
+        })
+        .catch(() => null);
+    }
+
+    return avatarImage.id;
+  } catch (error) {
+    console.error(`[DOS ID] Failed to sync avatar for organisation ${organisationId}:`, error);
     return null;
   }
 };
@@ -185,6 +249,14 @@ export const syncOrganisationForUser = async ({ userId, org }: { userId: number;
           },
         });
       }
+    }
+
+    // The IdP org avatar is the source of truth (same policy as the user
+    // avatar): refresh whenever DOS ID provides a URL. Fire-and-forget so
+    // the OAuth redirect latency stays independent of the org count - the
+    // avatar lands a moment after login and failures are logged inside.
+    if (org.avatar_url) {
+      void syncOrganisationAvatarFromUrl(existingOrg.id, org.avatar_url);
     }
 
     return existingOrg;
@@ -273,6 +345,10 @@ export const syncOrganisationForUser = async ({ userId, org }: { userId: number;
   }).catch((err) => {
     console.error(`[DOS ID] Failed to create default team for org ${newOrg.id}:`, err);
   });
+
+  if (org.avatar_url) {
+    void syncOrganisationAvatarFromUrl(newOrg.id, org.avatar_url);
+  }
 
   return newOrg;
 };
