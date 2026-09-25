@@ -50,8 +50,8 @@ export const sendResetPassword = async ({ userId, source }: SendResetPasswordOpt
       name: user.name || '',
     },
     from: {
-      name: env('NEXT_PRIVATE_SMTP_FROM_NAME') || 'Documenso',
-      address: env('NEXT_PRIVATE_SMTP_FROM_ADDRESS') || 'noreply@documenso.com',
+      name: env('NEXT_PRIVATE_SMTP_FROM_NAME') || 'Crove Sign',
+      address: env('NEXT_PRIVATE_SMTP_FROM_ADDRESS') || 'noreply@sign.crove.com',
     },
     subject,
     html,

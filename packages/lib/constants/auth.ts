@@ -16,7 +16,7 @@ export const SALT_ROUNDS = 12;
 export const TIMING_SAFE_DUMMY_PASSWORD_HASH = '$2y$12$eAJ6CR54acEljh1J/AN.peIPUd19yidDQRKhynGQriewBgzF1bQdm';
 
 export const IDENTITY_PROVIDER_NAME: Record<string, string> = {
-  DOCUMENSO: 'Documenso',
+  DOCUMENSO: 'Crove Sign',
   GOOGLE: 'Google',
   MICROSOFT: 'Microsoft',
   OIDC: 'OIDC',
