@@ -9,7 +9,7 @@ import { useTimedCycle } from './use-timed-cycle';
 const DEMO_BRANDS = [
   {
     name: 'Crove Sign',
-    letter: 'D',
+    letter: 'C',
     domain: 'noreply@sign.crove.com',
     accent: '#A2E771',
     ink: '#162C07',
@@ -18,7 +18,7 @@ const DEMO_BRANDS = [
   },
   {
     name: 'Crove Sign',
-    letter: 'D',
+    letter: 'C',
     domain: 'noreply@sign.crove.com',
     accent: '#387BC7',
     ink: '#ffffff',
@@ -27,7 +27,7 @@ const DEMO_BRANDS = [
   },
   {
     name: 'Crove Sign',
-    letter: 'D',
+    letter: 'C',
     domain: 'noreply@sign.crove.com',
     accent: '#9747F5',
     ink: '#ffffff',
