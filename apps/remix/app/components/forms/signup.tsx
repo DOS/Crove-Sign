@@ -69,6 +69,7 @@ export type SignUpFormProps = {
   isGoogleSignupEnabled?: boolean;
   isMicrosoftSignupEnabled?: boolean;
   isOidcSignupEnabled?: boolean;
+  oidcProviderLabel?: string;
   returnTo?: string;
 };
 
@@ -79,6 +80,7 @@ export const SignUpForm = ({
   isGoogleSignupEnabled,
   isMicrosoftSignupEnabled,
   isOidcSignupEnabled,
+  oidcProviderLabel,
   returnTo,
 }: SignUpFormProps) => {
   const { _ } = useLingui();
@@ -399,7 +401,7 @@ export const SignUpForm = ({
                   onClick={onSignUpWithOIDCClick}
                 >
                   <FaIdCardClip className="mr-2 h-5 w-5" />
-                  <Trans>Sign Up with OIDC</Trans>
+                  <Trans>Sign Up with {oidcProviderLabel || 'OIDC'}</Trans>
                 </Button>
               )}
 
